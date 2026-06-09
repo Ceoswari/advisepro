@@ -60,7 +60,15 @@ export default function AdminDashboard() {
       <div className="max-w-5xl mx-auto px-8 py-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900">Institutional Overview</h2>
-          <p className="text-gray-500 mt-1">{students.length} total students</p>
+                    <div className="flex items-center justify-between">
+            <p className="text-gray-500 mt-1">{students.length} total students</p>
+            <button
+              onClick={() => router.push('/dashboard/admin/students/new')}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
+            >
+              + Add Student
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-4 mb-8">

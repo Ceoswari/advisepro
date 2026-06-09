@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 function BenchmarkCard({ student }) {
   const [benchmark, setBenchmark] = useState(null)
@@ -110,6 +111,7 @@ export default function StudentDashboard() {
   const [student, setStudent] = useState(null)
   const [loading, setLoading] = useState(true)
   const [milestones, setMilestones] = useState([])
+  const router = useRouter()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -169,7 +171,15 @@ setLoading(false)
       <div className="max-w-5xl mx-auto px-8 py-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900">Welcome, {profile?.full_name}</h2>
-          <p className="text-gray-500 mt-1">{student?.class_year} · Interested in {student?.specialty_interest}</p>
+                   <div className="flex items-center justify-between">
+            <p className="text-gray-500 mt-1">{student?.class_year} · Interested in {student?.specialty_interest}</p>
+            <button
+              onClick={() => router.push('/dashboard/student/edit')}
+              className="text-sm text-gray-500 hover:text-gray-900 border border-gray-200 px-3 py-1 rounded-md"
+            >
+              Edit Profile
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-4 mb-8">

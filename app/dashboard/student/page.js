@@ -199,6 +199,8 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true)
   const [milestones, setMilestones] = useState([])
   const [activitiesCount, setActivitiesCount] = useState(0)
+  const [publications, setPublications] = useState([])
+  const [rotationsCount, setRotationsCount] = useState(0)
   const [advisingNotes, setAdvisingNotes] = useState([])
   const router = useRouter()
 
@@ -231,6 +233,16 @@ export default function StudentDashboard() {
           .select('id', { count: 'exact', head: true })
           .eq('student_id', studentData.id)
 
+        const { data: pubData } = await supabase
+          .from('publications')
+          .select('publication_type')
+          .eq('student_id', studentData.id)
+
+        const { count: rotCount } = await supabase
+          .from('away_rotations')
+          .select('id', { count: 'exact', head: true })
+          .eq('student_id', studentData.id)
+
         const { data: notesData } = await supabase
           .from('advising_notes')
           .select('*, profiles(full_name)')
@@ -239,6 +251,8 @@ export default function StudentDashboard() {
 
         setMilestones(milestonesData || [])
         setActivitiesCount(count || 0)
+        setPublications(pubData || [])
+        setRotationsCount(rotCount || 0)
         setAdvisingNotes(notesData || [])
       }
 
@@ -250,7 +264,7 @@ export default function StudentDashboard() {
     fetchData()
   }, [])
 
-  const competitivenessResult = calculateCompetitiveness(student, activitiesCount)
+  const competitivenessResult = calculateCompetitiveness(student, activitiesCount, publications, rotationsCount)
 
   if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>
 
@@ -302,18 +316,28 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg border border-gray-200 p-5">
             <p className="text-sm text-gray-500">Volunteer Hours</p>
             <p className="text-3xl font-bold text-gray-900 mt-1">{student?.volunteer_hours ?? '—'}</p>
           </div>
-          <div
-            onClick={() => router.push('/dashboard/student/activities')}
-            className="bg-white rounded-lg border border-gray-200 p-5 cursor-pointer hover:bg-gray-50"
-          >
+          <div onClick={() => router.push('/dashboard/student/activities')}
+            className="bg-white rounded-lg border border-gray-200 p-5 cursor-pointer hover:bg-gray-50">
             <p className="text-sm text-gray-500">ERAS Activities</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{activitiesCount} / 15</p>
-            <p className="text-xs text-blue-600 mt-2">Manage experiences →</p>
+            <p className="text-3xl font-bold text-gray-900 mt-1">{activitiesCount}<span className="text-base font-normal text-gray-400"> / 15</span></p>
+            <p className="text-xs text-blue-600 mt-1">Manage →</p>
+          </div>
+          <div onClick={() => router.push('/dashboard/student/publications')}
+            className="bg-white rounded-lg border border-gray-200 p-5 cursor-pointer hover:bg-gray-50">
+            <p className="text-sm text-gray-500">Publications</p>
+            <p className="text-3xl font-bold text-gray-900 mt-1">{publications.length}</p>
+            <p className="text-xs text-blue-600 mt-1">Manage →</p>
+          </div>
+          <div onClick={() => router.push('/dashboard/student/rotations')}
+            className="bg-white rounded-lg border border-gray-200 p-5 cursor-pointer hover:bg-gray-50">
+            <p className="text-sm text-gray-500">Away Rotations</p>
+            <p className="text-3xl font-bold text-gray-900 mt-1">{rotationsCount}</p>
+            <p className="text-xs text-blue-600 mt-1">Manage →</p>
           </div>
         </div>
 

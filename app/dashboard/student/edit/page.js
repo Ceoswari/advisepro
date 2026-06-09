@@ -68,14 +68,19 @@ export default function EditStudentProfile() {
       volunteer_hours: form.volunteer_hours ? parseInt(form.volunteer_hours) : 0,
     }
 
-    // Fetch current activities count so the score is accurate
-    const { count: activitiesCount } = await supabase
-      .from('activities')
-      .select('id', { count: 'exact', head: true })
-      .eq('student_id', studentId)
+    // Fetch current activities, publications, and rotations for accurate scoring
+    const [
+      { count: activitiesCount },
+      { data: pubData },
+      { count: rotCount },
+    ] = await Promise.all([
+      supabase.from('activities').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+      supabase.from('publications').select('publication_type').eq('student_id', studentId),
+      supabase.from('away_rotations').select('id', { count: 'exact', head: true }).eq('student_id', studentId),
+    ])
 
     // Calculate competitiveness score
-    const result = calculateCompetitiveness(updatedStudent, activitiesCount || 0)
+    const result = calculateCompetitiveness(updatedStudent, activitiesCount || 0, pubData || [], rotCount || 0)
 
     const { error } = await supabase
       .from('students')

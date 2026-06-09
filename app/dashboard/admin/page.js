@@ -91,12 +91,20 @@ export default function AdminDashboard() {
             <h2 className="text-2xl font-bold text-gray-900">Institutional Overview</h2>
             <p className="text-gray-500 mt-1">{students.length} total students</p>
           </div>
-          <button
-            onClick={() => router.push('/dashboard/admin/students/new')}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
-          >
-            + Add Student
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push('/dashboard/admin/students/bulk')}
+              className="border border-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-50"
+            >
+              Bulk Import
+            </button>
+            <button
+              onClick={() => router.push('/dashboard/admin/students/new')}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
+            >
+              + Add Student
+            </button>
+          </div>
         </div>
 
         {/* Risk summary — click to filter */}

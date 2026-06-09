@@ -40,7 +40,8 @@ const emptyForm = {
   is_intermittent: false,
   description: '',
   is_most_meaningful: false,
-  most_meaningful_description: ''
+  most_meaningful_description: '',
+  milestone_id: ''
 }
 
 export default function Activities() {
@@ -53,6 +54,7 @@ export default function Activities() {
   const [editingId, setEditingId] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
   const [form, setForm] = useState(emptyForm)
+  const [milestones, setMilestones] = useState([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,12 +69,12 @@ export default function Activities() {
 
       if (studentData) {
         setStudentId(studentData.id)
-        const { data: activitiesData } = await supabase
-          .from('activities')
-          .select('*')
-          .eq('student_id', studentData.id)
-          .order('created_at', { ascending: false })
+        const [{ data: activitiesData }, { data: msData }] = await Promise.all([
+          supabase.from('activities').select('*').eq('student_id', studentData.id).order('created_at', { ascending: false }),
+          supabase.from('student_milestones').select('*, milestones(id, title, due_year)').eq('student_id', studentData.id).order('created_at', { ascending: true })
+        ])
         setActivities(activitiesData || [])
+        setMilestones(msData || [])
       }
 
       setLoading(false)
@@ -113,7 +115,8 @@ export default function Activities() {
       is_intermittent: details.is_intermittent || false,
       description: details.experience_description || '',
       is_most_meaningful: activity.is_most_meaningful || false,
-      most_meaningful_description: details.most_meaningful_description || ''
+      most_meaningful_description: details.most_meaningful_description || '',
+      milestone_id: activity.milestone_id || ''
     })
     setEditingId(activity.id)
     setShowForm(true)
@@ -169,7 +172,8 @@ export default function Activities() {
       start_date: startDate,
       end_date: endDate,
       hours: form.hours_per_week ? parseInt(form.hours_per_week) : null,
-      is_most_meaningful: form.is_most_meaningful
+      is_most_meaningful: form.is_most_meaningful,
+      milestone_id: form.milestone_id || null
     }
 
     if (editingId) {
@@ -351,6 +355,21 @@ export default function Activities() {
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
 
+            {milestones.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Link to Milestone <span className="text-gray-400">(optional)</span></label>
+                <select name="milestone_id" value={form.milestone_id} onChange={handleChange}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">No milestone linked</option>
+                  {milestones.map(m => (
+                    <option key={m.id} value={m.milestones?.id}>
+                      {m.milestones?.due_year ? `[${m.milestones.due_year}] ` : ''}{m.milestones?.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
               <div className="flex items-center gap-2 mb-2">
                 <input type="checkbox" name="is_most_meaningful" checked={form.is_most_meaningful} onChange={handleChange} className="w-4 h-4" />
@@ -398,6 +417,14 @@ export default function Activities() {
                         {activity.is_most_meaningful && (
                           <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">⭐ Most Meaningful</span>
                         )}
+                        {activity.milestone_id && (() => {
+                          const linked = milestones.find(m => m.milestones?.id === activity.milestone_id)
+                          return linked ? (
+                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                              🎯 {linked.milestones?.title}
+                            </span>
+                          ) : null
+                        })()}
                       </div>
                       <p className="font-medium text-gray-900 mt-2">{activity.title}</p>
                       {details.organization_name && (

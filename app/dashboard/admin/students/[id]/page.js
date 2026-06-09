@@ -4,10 +4,20 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useParams, useRouter } from 'next/navigation'
 import { calculateCompetitiveness, TIER_LABELS } from '@/lib/scoring'
+import { useRef } from 'react'
+
+const ACADEMIC_DOC_TYPES = [
+  { value: 'transcript', label: 'Transcript' },
+  { value: 'step1_score_report', label: 'Step 1 Score Report' },
+  { value: 'step2_score_report', label: 'Step 2 Score Report' },
+  { value: 'lor', label: 'Letter of Recommendation' },
+  { value: 'other_academic', label: 'Other Academic Document' },
+]
 
 export default function AdminStudentDetail() {
   const { id } = useParams()
   const router = useRouter()
+  const fileInputRef = useRef(null)
   const [student, setStudent] = useState(null)
   const [profile, setProfile] = useState(null)
   const [notes, setNotes] = useState([])
@@ -18,6 +28,11 @@ export default function AdminStudentDetail() {
   const [loading, setLoading] = useState(true)
   const [assigning, setAssigning] = useState(false)
   const [selectedAdvisor, setSelectedAdvisor] = useState('')
+  const [academicFiles, setAcademicFiles] = useState([])
+  const [academicDocType, setAcademicDocType] = useState('transcript')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const [studentUserId, setStudentUserId] = useState(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -58,6 +73,24 @@ export default function AdminStudentDetail() {
         .from('profiles')
         .select('id, full_name, email')
         .eq('role', 'advisor')
+
+      // Get the student's profile_id (their user ID) for storage
+      const profileId = studentData?.profile_id
+      setStudentUserId(profileId)
+
+      // Load academic files uploaded by admin for this student
+      if (profileId) {
+        const allFiles = []
+        for (const type of ACADEMIC_DOC_TYPES) {
+          const { data } = await supabase.storage
+            .from('documents')
+            .list(`${profileId}/${type.value}`, { sortBy: { column: 'created_at', order: 'desc' } })
+          if (data) {
+            data.forEach(f => allFiles.push({ ...f, docType: type.value, path: `${profileId}/${type.value}/${f.name}` }))
+          }
+        }
+        setAcademicFiles(allFiles)
+      }
 
       setStudent(studentData)
       setProfile(studentData?.profiles)
@@ -100,6 +133,53 @@ export default function AdminStudentDetail() {
       .eq('student_id', id)
 
     setAssignedAdvisors(assignedAdvisors.filter(a => a.advisor_profile_id !== advisorProfileId))
+  }
+
+  const loadAcademicFiles = async (uid) => {
+    const allFiles = []
+    for (const type of ACADEMIC_DOC_TYPES) {
+      const { data } = await supabase.storage
+        .from('documents')
+        .list(`${uid}/${type.value}`, { sortBy: { column: 'created_at', order: 'desc' } })
+      if (data) {
+        data.forEach(f => allFiles.push({ ...f, docType: type.value, path: `${uid}/${type.value}/${f.name}` }))
+      }
+    }
+    setAcademicFiles(allFiles)
+  }
+
+  const handleAcademicUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file || !studentUserId) return
+    if (file.size > 10 * 1024 * 1024) { setUploadError('File must be under 10MB.'); return }
+    setUploading(true)
+    setUploadError('')
+    const filename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+    const path = `${studentUserId}/${academicDocType}/${filename}`
+    const { error } = await supabase.storage.from('documents').upload(path, file, { upsert: false })
+    if (error) { setUploadError(error.message) } else { await loadAcademicFiles(studentUserId) }
+    setUploading(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleAcademicDownload = async (path, name) => {
+    const { data } = await supabase.storage.from('documents').createSignedUrl(path, 60)
+    if (data?.signedUrl) {
+      const a = document.createElement('a'); a.href = data.signedUrl; a.download = name; a.click()
+    }
+  }
+
+  const handleAcademicDelete = async (path) => {
+    if (!confirm('Delete this file?')) return
+    await supabase.storage.from('documents').remove([path])
+    setAcademicFiles(prev => prev.filter(f => f.path !== path))
+  }
+
+  const formatSize = (bytes) => {
+    if (!bytes) return ''
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
   }
 
   const unassignedAdvisors = allAdvisors.filter(
@@ -298,6 +378,59 @@ export default function AdminStudentDetail() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Academic Documents */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5 mb-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Academic Documents</h3>
+          <div className="flex gap-3 items-end flex-wrap mb-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Document Type</label>
+              <select value={academicDocType} onChange={e => setAcademicDocType(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {ACADEMIC_DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">File (PDF, DOC, DOCX)</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={handleAcademicUpload}
+                disabled={uploading || !studentUserId}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700"
+              />
+            </div>
+            {uploading && <span className="text-sm text-blue-600">Uploading...</span>}
+          </div>
+          {uploadError && <p className="text-red-500 text-sm mb-3">{uploadError}</p>}
+          {academicFiles.length === 0 ? (
+            <p className="text-sm text-gray-400">No academic documents uploaded yet.</p>
+          ) : (
+            <div className="divide-y divide-gray-100 border border-gray-100 rounded-md">
+              {academicFiles.map(file => {
+                const typeLabel = ACADEMIC_DOC_TYPES.find(t => t.value === file.docType)?.label || file.docType
+                return (
+                  <div key={file.path} className="px-4 py-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{file.name.replace(/^\d+_/, '')}</p>
+                      <p className="text-xs text-gray-400">
+                        {typeLabel} · {formatSize(file.metadata?.size)}
+                        {file.created_at && ` · ${new Date(file.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <button onClick={() => handleAcademicDownload(file.path, file.name.replace(/^\d+_/, ''))}
+                        className="text-sm text-blue-600 hover:text-blue-800">Download</button>
+                      <button onClick={() => handleAcademicDelete(file.path)}
+                        className="text-sm text-gray-400 hover:text-red-500">Delete</button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Advising notes */}

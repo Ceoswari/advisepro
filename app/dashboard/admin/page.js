@@ -38,6 +38,30 @@ export default function AdminDashboard() {
     fetchData()
   }, [])
 
+  const exportCSV = () => {
+    const headers = ['Name', 'Email', 'Class Year', 'Specialty', 'Step 1 Status', 'Step 1 Score', 'Step 2 Score', 'Research', 'Volunteer Hours', 'Risk Level']
+    const rows = filtered.map(s => [
+      s.profiles?.full_name || '',
+      s.profiles?.email || '',
+      s.class_year || '',
+      s.specialty_interest || '',
+      s.usmle_step1_status || '',
+      s.usmle_step1_score || '',
+      s.usmle_step2_score || '',
+      s.research_count || '',
+      s.volunteer_hours || '',
+      s.risk_level || 'unset',
+    ])
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `advisepro_students_${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const riskCounts = {
     low: students.filter(s => s.risk_level === 'low').length,
     medium: students.filter(s => s.risk_level === 'medium').length,
@@ -166,9 +190,17 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-lg border border-gray-200">
           <div className="px-6 py-3 border-b border-gray-100 flex justify-between items-center">
             <h3 className="text-sm font-semibold text-gray-700">All Students</h3>
-            {filtered.length < students.length && (
-              <span className="text-xs text-gray-400">Showing {filtered.length} of {students.length}</span>
-            )}
+            <div className="flex items-center gap-3">
+              {filtered.length < students.length && (
+                <span className="text-xs text-gray-400">Showing {filtered.length} of {students.length}</span>
+              )}
+              <button
+                onClick={exportCSV}
+                className="text-xs text-gray-600 hover:text-gray-900 border border-gray-200 px-3 py-1 rounded-md hover:bg-gray-50"
+              >
+                Export CSV
+              </button>
+            </div>
           </div>
           {filtered.length === 0 ? (
             <div className="p-8 text-center text-gray-500">

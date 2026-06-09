@@ -356,6 +356,28 @@ export default function StudentDashboard() {
           </div>
         </div>
 
+        {/* Quick links row */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div onClick={() => router.push('/dashboard/student/documents')}
+            className="bg-white rounded-lg border border-gray-200 p-5 cursor-pointer hover:bg-gray-50 flex items-center gap-4">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 text-xl flex-shrink-0">📄</div>
+            <div>
+              <p className="font-semibold text-gray-900 text-sm">Documents</p>
+              <p className="text-xs text-gray-500 mt-0.5">Upload CV, personal statement, MSPE</p>
+              <p className="text-xs text-blue-600 mt-1">Manage →</p>
+            </div>
+          </div>
+          <div onClick={() => router.push('/dashboard/student/profile')}
+            className="bg-white rounded-lg border border-gray-200 p-5 cursor-pointer hover:bg-gray-50 flex items-center gap-4">
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600 text-xl flex-shrink-0">🎓</div>
+            <div>
+              <p className="font-semibold text-gray-900 text-sm">Application Profile</p>
+              <p className="text-xs text-gray-500 mt-0.5">Print-ready view of all your data</p>
+              <p className="text-xs text-purple-600 mt-1">View & Export →</p>
+            </div>
+          </div>
+        </div>
+
         {/* Competitiveness score card */}
         <div className="mb-6">
           <CompetitivenessCard result={competitivenessResult} student={student} />

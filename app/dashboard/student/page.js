@@ -119,20 +119,35 @@ function CompetitivenessCard({ result, student }) {
   }
   const c = riskColors[riskLevel]
 
-  const BreakdownRow = ({ item }) => (
-    <div className="flex items-center gap-3">
-      <span className="text-sm text-gray-600 w-44 flex-shrink-0">{item.label}</span>
-      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-blue-400 rounded-full transition-all"
-          style={{ width: `${(item.score / item.max) * 100}%` }}
-        />
+  const BreakdownRow = ({ item }) => {
+    if (item.binary) {
+      return (
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-600 w-44 flex-shrink-0">{item.label}</span>
+          <div className="flex-1">
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${item.score > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+              {item.score > 0 ? `✓ Yes — +${item.score} pts` : 'None yet'}
+            </span>
+          </div>
+          <span className="text-xs text-gray-500 w-12 text-right flex-shrink-0">{item.score} / {item.max}</span>
+        </div>
+      )
+    }
+    const barWidth = item.uncapped
+      ? Math.min((item.score / item.displayMax) * 100, 100)
+      : (item.score / item.max) * 100
+    return (
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-gray-600 w-44 flex-shrink-0">{item.label}</span>
+        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-full bg-blue-400 rounded-full transition-all" style={{ width: `${barWidth}%` }} />
+        </div>
+        <span className="text-xs text-gray-500 w-16 text-right flex-shrink-0">
+          {item.uncapped ? `+${item.score} pts` : `${item.score} / ${item.max}`}
+        </span>
       </div>
-      <span className="text-xs text-gray-500 w-12 text-right flex-shrink-0">
-        {item.score} / {item.max}
-      </span>
-    </div>
-  )
+    )
+  }
 
   return (
     <div className={`rounded-lg border ${c.border} ${c.bg} p-5`}>

@@ -203,10 +203,21 @@ export default function AdminStudentDetail() {
               {Object.values(competitivenessResult.breakdown).map(item => (
                 <div key={item.label} className="flex items-center gap-3">
                   <span className="text-xs text-gray-600 w-40 flex-shrink-0">{item.label}</span>
-                  <div className="flex-1 h-1.5 bg-white rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-400 rounded-full" style={{ width: `${(item.score / item.max) * 100}%` }} />
-                  </div>
-                  <span className="text-xs text-gray-500 w-10 text-right">{item.score}/{item.max}</span>
+                  {item.binary ? (
+                    <div className="flex-1">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${item.score > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                        {item.score > 0 ? '✓ Yes' : 'None'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex-1 h-1.5 bg-white rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-400 rounded-full"
+                        style={{ width: `${Math.min((item.score / (item.displayMax || item.max)) * 100, 100)}%` }} />
+                    </div>
+                  )}
+                  <span className="text-xs text-gray-500 w-12 text-right">
+                    {item.uncapped ? `+${item.score}` : `${item.score}/${item.max}`}
+                  </span>
                 </div>
               ))}
             </div>

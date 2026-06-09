@@ -214,27 +214,42 @@ setLoading(false)
               <div key={year} className="mb-6">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{year}</p>
                 <div className="space-y-2">
-                  {yearMilestones.map(m => (
-                    <div key={m.id} className="flex items-center gap-3">
-                      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                        m.status === 'completed' ? 'bg-green-500' :
-                        m.status === 'in_progress' ? 'bg-yellow-400' :
-                        'bg-gray-200'
-                      }`} />
-                      <div className="flex-1">
-                        <p className={`text-sm ${m.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                          {m.milestones?.title}
-                        </p>
+                                      {yearMilestones.map(m => (
+                      <div key={m.id} className="flex items-center gap-3">
+                        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                          m.status === 'completed' ? 'bg-green-500' :
+                          m.status === 'in_progress' ? 'bg-yellow-400' :
+                          'bg-gray-200'
+                        }`} />
+                        <div className="flex-1">
+                          <p className={`text-sm ${m.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                            {m.milestones?.title}
+                          </p>
+                        </div>
+                        <select
+                          value={m.status}
+                          onChange={async (e) => {
+                            const newStatus = e.target.value
+                            await supabase
+                              .from('student_milestones')
+                              .update({ status: newStatus, completed_date: newStatus === 'completed' ? new Date().toISOString().split('T')[0] : null })
+                              .eq('id', m.id)
+                            setMilestones(prev => prev.map(item =>
+                              item.id === m.id ? { ...item, status: newStatus } : item
+                            ))
+                          }}
+                          className={`text-xs px-2 py-0.5 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            m.status === 'completed' ? 'bg-green-100 text-green-700' :
+                            m.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-gray-100 text-gray-500'
+                          }`}
+                        >
+                          <option value="not_started">Not Started</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                        </select>
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
-                        m.status === 'completed' ? 'bg-green-100 text-green-700' :
-                        m.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-500'
-                      }`}>
-                        {m.status.replace('_', ' ')}
-                      </span>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </div>
             )

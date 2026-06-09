@@ -13,7 +13,8 @@ export default function StudentDetail() {
   const [newNote, setNewNote] = useState('')
   const [meetingDate, setMeetingDate] = useState('')
   const [saving, setSaving] = useState(false)
-  const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(true)
+  const [milestones, setMilestones] = useState([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -29,9 +30,16 @@ export default function StudentDetail() {
         .eq('student_id', id)
         .order('meeting_date', { ascending: false })
 
+            const { data: milestonesData } = await supabase
+        .from('student_milestones')
+        .select('*, milestones(*)')
+        .eq('student_id', id)
+        .order('created_at', { ascending: true })
+
       setStudent(studentData)
       setProfile(studentData?.profiles)
       setNotes(notesData || [])
+      setMilestones(milestonesData || [])
       setLoading(false)
     }
 
@@ -158,6 +166,44 @@ export default function StudentDetail() {
           )}
         </div>
       </div>
-    </div>
+            {/* Milestones */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mt-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Milestones</h3>
+          {milestones.length === 0 ? (
+            <p className="text-sm text-gray-500">No milestones assigned yet.</p>
+          ) : (
+            ['MS1', 'MS2', 'MS3', 'MS4'].map(year => {
+              const yearMilestones = milestones.filter(m => m.milestones?.due_year === year)
+              if (yearMilestones.length === 0) return null
+              return (
+                <div key={year} className="mb-6">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{year}</p>
+                  <div className="space-y-2">
+                    {yearMilestones.map(m => (
+                      <div key={m.id} className="flex items-center gap-3">
+                        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                          m.status === 'completed' ? 'bg-green-500' :
+                          m.status === 'in_progress' ? 'bg-yellow-400' :
+                          'bg-gray-200'
+                        }`} />
+                        <p className={`text-sm flex-1 ${m.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                          {m.milestones?.title}
+                        </p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
+                          m.status === 'completed' ? 'bg-green-100 text-green-700' :
+                          m.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-500'
+                        }`}>
+                          {m.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+        </div>
   )
 }

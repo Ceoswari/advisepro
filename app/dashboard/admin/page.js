@@ -13,6 +13,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { window.location.href = '/login'; return }
 
       const { data: profileData } = await supabase
         .from('profiles')
@@ -43,10 +44,17 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-900">AdvisePro</h1>
-        <span className="text-sm text-gray-500">{profile?.full_name} · Admin</span>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-gray-500">{profile?.full_name} · Admin</span>
+          <button
+            onClick={async () => { await supabase.auth.signOut(); window.location.href = '/login' }}
+            className="text-sm text-gray-500 hover:text-gray-900 border border-gray-200 px-3 py-1 rounded-md"
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-8 py-8">
@@ -55,7 +63,6 @@ export default function AdminDashboard() {
           <p className="text-gray-500 mt-1">{students.length} total students</p>
         </div>
 
-        {/* Summary Cards */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded-lg border border-gray-200 p-5">
             <p className="text-sm text-gray-500">Low Risk</p>
@@ -71,7 +78,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* All Students Table */}
         <div className="bg-white rounded-lg border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-100">
             <h3 className="text-sm font-semibold text-gray-700">All Students</h3>

@@ -13,6 +13,7 @@ export default function AdvisorDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { window.location.href = '/login'; return }
 
       const { data: profileData } = await supabase
         .from('profiles')
@@ -45,10 +46,17 @@ export default function AdvisorDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-900">AdvisePro</h1>
-        <span className="text-sm text-gray-500">{profile?.full_name}</span>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-gray-500">{profile?.full_name}</span>
+          <button
+            onClick={async () => { await supabase.auth.signOut(); window.location.href = '/login' }}
+            className="text-sm text-gray-500 hover:text-gray-900 border border-gray-200 px-3 py-1 rounded-md"
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-8 py-8">

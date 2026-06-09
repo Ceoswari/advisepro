@@ -11,6 +11,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { window.location.href = '/login'; return }
 
       const { data: profileData } = await supabase
         .from('profiles')
@@ -36,20 +37,25 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-900">AdvisePro</h1>
-        <span className="text-sm text-gray-500">{profile?.full_name}</span>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-gray-500">{profile?.full_name}</span>
+          <button
+            onClick={async () => { await supabase.auth.signOut(); window.location.href = '/login' }}
+            className="text-sm text-gray-500 hover:text-gray-900 border border-gray-200 px-3 py-1 rounded-md"
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-8 py-8">
-        {/* Welcome */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900">Welcome, {profile?.full_name}</h2>
           <p className="text-gray-500 mt-1">{student?.class_year} · Interested in {student?.specialty_interest}</p>
         </div>
 
-        {/* Status Cards */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded-lg border border-gray-200 p-5">
             <p className="text-sm text-gray-500">USMLE Step 1</p>
@@ -58,12 +64,10 @@ export default function StudentDashboard() {
               {student?.usmle_step1_status === 'pass' ? 'Pass' : student?.usmle_step1_status === 'fail' ? 'Fail' : 'Not taken'}
             </span>
           </div>
-
           <div className="bg-white rounded-lg border border-gray-200 p-5">
             <p className="text-sm text-gray-500">USMLE Step 2</p>
             <p className="text-3xl font-bold text-gray-900 mt-1">{student?.usmle_step2_score ?? '—'}</p>
           </div>
-
           <div className="bg-white rounded-lg border border-gray-200 p-5">
             <p className="text-sm text-gray-500">Risk Level</p>
             <p className={`text-3xl font-bold mt-1 capitalize ${student?.risk_level === 'low' ? 'text-green-600' : student?.risk_level === 'medium' ? 'text-yellow-500' : 'text-red-600'}`}>
@@ -72,7 +76,6 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Activity Summary */}
         <div className="grid grid-cols-2 gap-4 mb-8">
           <div className="bg-white rounded-lg border border-gray-200 p-5">
             <p className="text-sm text-gray-500">Research Experiences</p>
@@ -84,7 +87,6 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Specialty Interest */}
         <div className="bg-white rounded-lg border border-gray-200 p-5">
           <h3 className="text-sm font-medium text-gray-700 mb-1">Target Specialty</h3>
           <p className="text-lg font-semibold text-gray-900">{student?.specialty_interest}</p>

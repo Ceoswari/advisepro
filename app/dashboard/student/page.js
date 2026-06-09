@@ -7,6 +7,7 @@ export default function StudentDashboard() {
   const [profile, setProfile] = useState(null)
   const [student, setStudent] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [milestones, setMilestones] = useState([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -25,9 +26,22 @@ export default function StudentDashboard() {
         .eq('profile_id', user.id)
         .single()
 
-      setProfile(profileData)
-      setStudent(studentData)
-      setLoading(false)
+      const { data: studentRecord } = await supabase
+  .from('students')
+  .select('id')
+  .eq('profile_id', user.id)
+  .single()
+
+const { data: milestonesData } = await supabase
+  .from('student_milestones')
+  .select('*, milestones(*)')
+  .eq('student_id', studentRecord.id)
+  .order('created_at', { ascending: true })
+
+setProfile(profileData)
+setStudent(studentData)
+setMilestones(milestonesData || [])
+setLoading(false)
     }
 
     fetchData()
@@ -87,10 +101,46 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-5">
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
           <h3 className="text-sm font-medium text-gray-700 mb-1">Target Specialty</h3>
           <p className="text-lg font-semibold text-gray-900">{student?.specialty_interest}</p>
           <p className="text-sm text-gray-500 mt-1">Benchmark comparison coming soon</p>
+        </div>
+
+        <div className="bg-white rounded-lg border border-gray-200 p-5 mt-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4">Milestones</h3>
+          {['MS1', 'MS2', 'MS3', 'MS4'].map(year => {
+            const yearMilestones = milestones.filter(m => m.milestones?.due_year === year)
+            if (yearMilestones.length === 0) return null
+            return (
+              <div key={year} className="mb-6">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{year}</p>
+                <div className="space-y-2">
+                  {yearMilestones.map(m => (
+                    <div key={m.id} className="flex items-center gap-3">
+                      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                        m.status === 'completed' ? 'bg-green-500' :
+                        m.status === 'in_progress' ? 'bg-yellow-400' :
+                        'bg-gray-200'
+                      }`} />
+                      <div className="flex-1">
+                        <p className={`text-sm ${m.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                          {m.milestones?.title}
+                        </p>
+                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
+                        m.status === 'completed' ? 'bg-green-100 text-green-700' :
+                        m.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-500'
+                      }`}>
+                        {m.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>

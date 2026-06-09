@@ -3,6 +3,108 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
+function BenchmarkCard({ student }) {
+  const [benchmark, setBenchmark] = useState(null)
+
+  useEffect(() => {
+    if (!student?.specialty_interest) return
+    const fetchBenchmark = async () => {
+      const { data } = await supabase
+        .from('benchmarks')
+        .select('*')
+        .eq('specialty', student.specialty_interest)
+        .single()
+      setBenchmark(data)
+    }
+    fetchBenchmark()
+  }, [student])
+
+  const ScoreBar = ({ label, score, mean, p25, p75 }) => {
+    if (!mean) return null
+    const min = p25 - 30
+    const max = p75 + 30
+    const range = max - min
+    const meanPos = ((mean - min) / range) * 100
+    const p25Pos = ((p25 - min) / range) * 100
+    const p75Pos = ((p75 - min) / range) * 100
+    const scorePos = score ? ((score - min) / range) * 100 : null
+
+    return (
+      <div className="mb-4">
+        <div className="flex justify-between items-center mb-1">
+          <p className="text-sm text-gray-600">{label}</p>
+          <div className="flex gap-3 text-xs text-gray-500">
+            <span>Your score: <span className="font-semibold text-gray-900">{score ?? '—'}</span></span>
+            <span>Mean: <span className="font-semibold text-gray-900">{mean}</span></span>
+          </div>
+        </div>
+        <div className="relative h-6 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className="absolute h-full bg-blue-100 rounded-full"
+            style={{ left: `${p25Pos}%`, width: `${p75Pos - p25Pos}%` }}
+          />
+          <div
+            className="absolute w-0.5 h-full bg-blue-400"
+            style={{ left: `${meanPos}%` }}
+          />
+          {scorePos !== null && (
+            <div
+              className="absolute w-3 h-3 rounded-full bg-green-500 border-2 border-white top-1.5"
+              style={{ left: `${Math.min(Math.max(scorePos, 2), 95)}%` }}
+            />
+          )}
+        </div>
+        <div className="flex justify-between text-xs text-gray-400 mt-1">
+          <span>25th: {p25}</span>
+          <span>75th: {p75}</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-5">
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-sm font-medium text-gray-700">Specialty Benchmark</h3>
+          <p className="text-lg font-semibold text-gray-900">{student?.specialty_interest}</p>
+        </div>
+        {benchmark && (
+          <span className="text-xs text-gray-400">{benchmark.source} {benchmark.data_year}</span>
+        )}
+      </div>
+
+      {!benchmark ? (
+        <p className="text-sm text-gray-500">No benchmark data available for this specialty.</p>
+      ) : (
+        <>
+          <ScoreBar
+            label="USMLE Step 1"
+            score={student?.usmle_step1_score}
+            mean={benchmark.step1_mean}
+            p25={benchmark.step1_25th}
+            p75={benchmark.step1_75th}
+          />
+          <ScoreBar
+            label="USMLE Step 2"
+            score={student?.usmle_step2_score}
+            mean={benchmark.step2_mean}
+            p25={benchmark.step2_25th}
+            p75={benchmark.step2_75th}
+          />
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex gap-4 text-xs text-gray-500">
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-500 inline-block"></span> Your score</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-1 bg-blue-400 inline-block"></span> National mean</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-blue-100 inline-block rounded"></span> 25th–75th percentile</span>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function StudentDashboard() {
   const [profile, setProfile] = useState(null)
   const [student, setStudent] = useState(null)
@@ -101,11 +203,7 @@ setLoading(false)
           </div>
         </div>
 
-                <div className="bg-white rounded-lg border border-gray-200 p-5">
-          <h3 className="text-sm font-medium text-gray-700 mb-1">Target Specialty</h3>
-          <p className="text-lg font-semibold text-gray-900">{student?.specialty_interest}</p>
-          <p className="text-sm text-gray-500 mt-1">Benchmark comparison coming soon</p>
-        </div>
+                        <BenchmarkCard student={student} />
 
         <div className="bg-white rounded-lg border border-gray-200 p-5 mt-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-4">Milestones</h3>

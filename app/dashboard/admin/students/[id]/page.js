@@ -190,18 +190,23 @@ export default function AdminStudentDetail() {
 
   const completedMilestones = milestones.filter(m => m.status === 'completed').length
 
-  if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>
+  if (loading) return <div className="min-h-screen bg-stone-50 flex items-center justify-center">Loading...</div>
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center">
+    <div className="min-h-screen bg-stone-50">
+      <div className="bg-white border-b border-stone-100 shadow-sm px-8 h-16 flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <button onClick={() => router.push('/dashboard/admin')} className="text-sm text-gray-500 hover:text-gray-900">← Back</button>
-          <h1 className="text-xl font-bold text-gray-900">AdvisePro</h1>
+          <button onClick={() => router.push('/dashboard/admin')} className="text-sm text-stone-500 hover:text-stone-900">← Back</button>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-teal-600 rounded-lg flex items-center justify-center">
+              <span className="text-white text-xs font-bold">A</span>
+            </div>
+            <span className="font-bold text-stone-900">AdvisePro</span>
+          </div>
         </div>
         <button
           onClick={() => router.push(`/dashboard/admin/students/${id}/edit`)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
+          className="bg-teal-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-teal-700"
         >
           Edit Student
         </button>
@@ -210,82 +215,82 @@ export default function AdminStudentDetail() {
       <div className="max-w-5xl mx-auto px-8 py-8">
         {/* Header */}
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">{profile?.full_name}</h2>
-          <p className="text-gray-500 mt-1">{student?.class_year} · {student?.specialty_interest ?? 'No specialty set'} · {profile?.email}</p>
+          <h2 className="text-2xl font-bold text-stone-900">{profile?.full_name}</h2>
+          <p className="text-stone-500 mt-1">{student?.class_year} · {student?.specialty_interest ?? 'No specialty set'} · {profile?.email}</p>
         </div>
 
         {/* Score cards */}
         <div className="grid grid-cols-4 gap-4 mb-4">
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">Step 1</p>
-            <p className="text-2xl font-bold text-gray-900">{student?.usmle_step1_score ?? '—'}</p>
-            <span className={`text-xs ${student?.usmle_step1_status === 'pass' ? 'text-green-600' : student?.usmle_step1_status === 'fail' ? 'text-red-600' : 'text-gray-400'}`}>
+          <div className="bg-white rounded-2xl border border-stone-200 p-4">
+            <p className="text-xs text-stone-500">Step 1</p>
+            <p className="text-2xl font-bold text-stone-900">{student?.usmle_step1_score ?? '—'}</p>
+            <span className={`text-xs ${student?.usmle_step1_status === 'pass' ? 'text-emerald-600' : student?.usmle_step1_status === 'fail' ? 'text-rose-600' : 'text-stone-400'}`}>
               {student?.usmle_step1_status === 'pass' ? 'Pass' : student?.usmle_step1_status === 'fail' ? 'Fail' : 'Not taken'}
             </span>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">Step 2</p>
-            <p className="text-2xl font-bold text-gray-900">{student?.usmle_step2_score ?? '—'}</p>
+          <div className="bg-white rounded-2xl border border-stone-200 p-4">
+            <p className="text-xs text-stone-500">Step 2</p>
+            <p className="text-2xl font-bold text-stone-900">{student?.usmle_step2_score ?? '—'}</p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">Research</p>
-            <p className="text-2xl font-bold text-gray-900">{student?.research_count ?? '—'}</p>
+          <div className="bg-white rounded-2xl border border-stone-200 p-4">
+            <p className="text-xs text-stone-500">Research</p>
+            <p className="text-2xl font-bold text-stone-900">{student?.research_count ?? '—'}</p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">Milestones</p>
-            <p className="text-2xl font-bold text-gray-900">{completedMilestones}<span className="text-sm font-normal text-gray-400"> / {milestones.length}</span></p>
+          <div className="bg-white rounded-2xl border border-stone-200 p-4">
+            <p className="text-xs text-stone-500">Milestones</p>
+            <p className="text-2xl font-bold text-stone-900">{completedMilestones}<span className="text-sm font-normal text-stone-400"> / {milestones.length}</span></p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">Volunteer Hours</p>
-            <p className="text-2xl font-bold text-gray-900">{student?.volunteer_hours ?? '—'}</p>
+          <div className="bg-white rounded-2xl border border-stone-200 p-4">
+            <p className="text-xs text-stone-500">Volunteer Hours</p>
+            <p className="text-2xl font-bold text-stone-900">{student?.volunteer_hours ?? '—'}</p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">ERAS Activities</p>
-            <p className="text-2xl font-bold text-gray-900">{activitiesCount}<span className="text-sm font-normal text-gray-400"> / 15</span></p>
+          <div className="bg-white rounded-2xl border border-stone-200 p-4">
+            <p className="text-xs text-stone-500">ERAS Activities</p>
+            <p className="text-2xl font-bold text-stone-900">{activitiesCount}<span className="text-sm font-normal text-stone-400"> / 15</span></p>
           </div>
         </div>
 
         {/* Competitiveness score */}
         {competitivenessResult && (
           <div className={`rounded-lg border p-5 mb-6 ${
-            competitivenessResult.riskLevel === 'low' ? 'bg-green-50 border-green-200' :
-            competitivenessResult.riskLevel === 'medium' ? 'bg-yellow-50 border-yellow-200' :
-            'bg-red-50 border-red-200'
+            competitivenessResult.riskLevel === 'low' ? 'bg-emerald-50 border-green-200' :
+            competitivenessResult.riskLevel === 'medium' ? 'bg-amber-50 border-yellow-200' :
+            'bg-rose-50 border-rose-200'
           }`}>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-sm font-medium text-gray-700">Competitiveness Score</p>
+                <p className="text-sm font-medium text-stone-700">Competitiveness Score</p>
                 <div className="flex items-baseline gap-2">
                   <span className={`text-3xl font-bold ${
-                    competitivenessResult.riskLevel === 'low' ? 'text-green-700' :
-                    competitivenessResult.riskLevel === 'medium' ? 'text-yellow-700' : 'text-red-700'
+                    competitivenessResult.riskLevel === 'low' ? 'text-emerald-700' :
+                    competitivenessResult.riskLevel === 'medium' ? 'text-amber-700' : 'text-rose-700'
                   }`}>{competitivenessResult.score}</span>
-                  <span className="text-gray-400">/ 100</span>
+                  <span className="text-stone-400">/ 100</span>
                 </div>
               </div>
               <div className="text-right">
                 <span className={`text-sm font-semibold px-3 py-1 rounded-full ${
-                  competitivenessResult.riskLevel === 'low' ? 'bg-green-100 text-green-700' :
-                  competitivenessResult.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-red-100 text-red-700'
+                  competitivenessResult.riskLevel === 'low' ? 'bg-emerald-100 text-emerald-700' :
+                  competitivenessResult.riskLevel === 'medium' ? 'bg-amber-100 text-amber-700' :
+                  'bg-rose-100 text-rose-700'
                 }`}>
                   {competitivenessResult.riskLevel === 'low' ? 'Low Risk' : competitivenessResult.riskLevel === 'medium' ? 'Medium Risk' : 'High Risk'}
                 </span>
                 {student?.specialty_interest && (
-                  <p className="text-xs text-gray-400 mt-1">{TIER_LABELS[competitivenessResult.tier] || ''} specialty</p>
+                  <p className="text-xs text-stone-400 mt-1">{TIER_LABELS[competitivenessResult.tier] || ''} specialty</p>
                 )}
               </div>
             </div>
             <div className="space-y-2">
               {Object.values(competitivenessResult.breakdown).map(item => (
                 <div key={item.label} className="flex items-center gap-3">
-                  <span className="text-xs text-gray-600 w-40 flex-shrink-0">{item.label}</span>
+                  <span className="text-xs text-stone-600 w-40 flex-shrink-0">{item.label}</span>
                   {item.binary ? (
                     <div className="flex-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${item.score > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${item.score > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-400'}`}>
                         {item.score > 0 ? '✓ Yes' : 'None'}
                       </span>
                     </div>
@@ -295,7 +300,7 @@ export default function AdminStudentDetail() {
                         style={{ width: `${Math.min((item.score / (item.displayMax || item.max)) * 100, 100)}%` }} />
                     </div>
                   )}
-                  <span className="text-xs text-gray-500 w-12 text-right">
+                  <span className="text-xs text-stone-500 w-12 text-right">
                     {item.uncapped ? `+${item.score}` : `${item.score}/${item.max}`}
                   </span>
                 </div>
@@ -306,21 +311,21 @@ export default function AdminStudentDetail() {
 
         <div className="grid grid-cols-2 gap-6 mb-6">
           {/* Assign Advisors */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Assigned Advisors</h3>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5">
+            <h3 className="text-sm font-semibold text-stone-700 mb-4">Assigned Advisors</h3>
             {assignedAdvisors.length === 0 ? (
-              <p className="text-sm text-gray-400 mb-4">No advisors assigned yet.</p>
+              <p className="text-sm text-stone-400 mb-4">No advisors assigned yet.</p>
             ) : (
               <div className="space-y-2 mb-4">
                 {assignedAdvisors.map(a => (
-                  <div key={a.advisor_profile_id} className="flex items-center justify-between bg-gray-50 rounded-md px-3 py-2">
+                  <div key={a.advisor_profile_id} className="flex items-center justify-between bg-stone-50 rounded-xl px-3 py-2">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{a.profiles?.full_name}</p>
-                      <p className="text-xs text-gray-400">{a.profiles?.email}</p>
+                      <p className="text-sm font-medium text-stone-900">{a.profiles?.full_name}</p>
+                      <p className="text-xs text-stone-400">{a.profiles?.email}</p>
                     </div>
                     <button
                       onClick={() => handleRemoveAdvisor(a.advisor_profile_id)}
-                      className="text-xs text-red-400 hover:text-red-600"
+                      className="text-xs text-red-400 hover:text-rose-600"
                     >
                       Remove
                     </button>
@@ -333,7 +338,7 @@ export default function AdminStudentDetail() {
                 <select
                   value={selectedAdvisor}
                   onChange={e => setSelectedAdvisor(e.target.value)}
-                  className="flex-1 border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 border border-stone-300 rounded-xl px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
                   <option value="">Select advisor...</option>
                   {unassignedAdvisors.map(a => (
@@ -343,37 +348,37 @@ export default function AdminStudentDetail() {
                 <button
                   onClick={handleAssignAdvisor}
                   disabled={!selectedAdvisor || assigning}
-                  className="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+                  className="bg-teal-600 text-white px-3 py-1.5 rounded-xl text-sm hover:bg-teal-700 disabled:opacity-50"
                 >
                   Assign
                 </button>
               </div>
             )}
             {unassignedAdvisors.length === 0 && allAdvisors.length === 0 && (
-              <p className="text-xs text-gray-400">No advisor accounts exist yet.</p>
+              <p className="text-xs text-stone-400">No advisor accounts exist yet.</p>
             )}
           </div>
 
           {/* Milestones summary */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Milestones</h3>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5">
+            <h3 className="text-sm font-semibold text-stone-700 mb-4">Milestones</h3>
             {milestones.length === 0 ? (
-              <p className="text-sm text-gray-400">No milestones assigned.</p>
+              <p className="text-sm text-stone-400">No milestones assigned.</p>
             ) : (
               <div className="space-y-1.5">
                 {milestones.slice(0, 8).map(m => (
                   <div key={m.id} className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      m.status === 'completed' ? 'bg-green-500' :
-                      m.status === 'in_progress' ? 'bg-yellow-400' : 'bg-gray-200'
+                      m.status === 'completed' ? 'bg-emerald-500' :
+                      m.status === 'in_progress' ? 'bg-yellow-400' : 'bg-stone-200'
                     }`} />
-                    <span className={`text-xs flex-1 ${m.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
+                    <span className={`text-xs flex-1 ${m.status === 'completed' ? 'text-stone-400 line-through' : 'text-stone-700'}`}>
                       {m.milestones?.title}
                     </span>
                   </div>
                 ))}
                 {milestones.length > 8 && (
-                  <p className="text-xs text-gray-400 pt-1">+{milestones.length - 8} more</p>
+                  <p className="text-xs text-stone-400 pt-1">+{milestones.length - 8} more</p>
                 )}
               </div>
             )}
@@ -381,50 +386,50 @@ export default function AdminStudentDetail() {
         </div>
 
         {/* Academic Documents */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5 mb-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Academic Documents</h3>
+        <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-6">
+          <h3 className="text-sm font-semibold text-stone-700 mb-4">Academic Documents</h3>
           <div className="flex gap-3 items-end flex-wrap mb-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Document Type</label>
+              <label className="block text-xs font-medium text-stone-600 mb-1">Document Type</label>
               <select value={academicDocType} onChange={e => setAcademicDocType(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
                 {ACADEMIC_DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">File (PDF, DOC, DOCX)</label>
+              <label className="block text-xs font-medium text-stone-600 mb-1">File (PDF, DOC, DOCX)</label>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept=".pdf,.doc,.docx"
                 onChange={handleAcademicUpload}
                 disabled={uploading || !studentUserId}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700"
+                className="border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-xs file:bg-teal-50 file:text-teal-700"
               />
             </div>
-            {uploading && <span className="text-sm text-blue-600">Uploading...</span>}
+            {uploading && <span className="text-sm text-teal-600">Uploading...</span>}
           </div>
-          {uploadError && <p className="text-red-500 text-sm mb-3">{uploadError}</p>}
+          {uploadError && <p className="text-rose-500 text-sm mb-3">{uploadError}</p>}
           {academicFiles.length === 0 ? (
-            <p className="text-sm text-gray-400">No academic documents uploaded yet.</p>
+            <p className="text-sm text-stone-400">No academic documents uploaded yet.</p>
           ) : (
-            <div className="divide-y divide-gray-100 border border-gray-100 rounded-md">
+            <div className="divide-y divide-stone-100 border border-stone-100 rounded-xl">
               {academicFiles.map(file => {
                 const typeLabel = ACADEMIC_DOC_TYPES.find(t => t.value === file.docType)?.label || file.docType
                 return (
                   <div key={file.path} className="px-4 py-3 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{file.name.replace(/^\d+_/, '')}</p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-sm font-medium text-stone-900">{file.name.replace(/^\d+_/, '')}</p>
+                      <p className="text-xs text-stone-400">
                         {typeLabel} · {formatSize(file.metadata?.size)}
                         {file.created_at && ` · ${new Date(file.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
                       </p>
                     </div>
                     <div className="flex gap-3">
                       <button onClick={() => handleAcademicDownload(file.path, file.name.replace(/^\d+_/, ''))}
-                        className="text-sm text-blue-600 hover:text-blue-800">Download</button>
+                        className="text-sm text-teal-600 hover:text-teal-800">Download</button>
                       <button onClick={() => handleAcademicDelete(file.path)}
-                        className="text-sm text-gray-400 hover:text-red-500">Delete</button>
+                        className="text-sm text-stone-400 hover:text-rose-500">Delete</button>
                     </div>
                   </div>
                 )
@@ -434,19 +439,19 @@ export default function AdminStudentDetail() {
         </div>
 
         {/* Advising notes */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Advising Notes ({notes.length})</h3>
+        <div className="bg-white rounded-2xl border border-stone-200 p-5">
+          <h3 className="text-sm font-semibold text-stone-700 mb-4">Advising Notes ({notes.length})</h3>
           {notes.length === 0 ? (
-            <p className="text-sm text-gray-400">No meetings logged yet.</p>
+            <p className="text-sm text-stone-400">No meetings logged yet.</p>
           ) : (
             <div className="space-y-4">
               {notes.map(note => (
-                <div key={note.id} className="border-l-2 border-blue-200 pl-4">
+                <div key={note.id} className="border-l-2 border-teal-200 pl-4">
                   <div className="flex justify-between items-start mb-1">
-                    <p className="text-sm font-medium text-gray-900">{note.profiles?.full_name}</p>
-                    <p className="text-xs text-gray-400">{note.meeting_date}</p>
+                    <p className="text-sm font-medium text-stone-900">{note.profiles?.full_name}</p>
+                    <p className="text-xs text-stone-400">{note.meeting_date}</p>
                   </div>
-                  <p className="text-sm text-gray-600">{note.notes}</p>
+                  <p className="text-sm text-stone-600">{note.notes}</p>
                 </div>
               ))}
             </div>

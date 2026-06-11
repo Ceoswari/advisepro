@@ -4,20 +4,20 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
-function BarChart({ data, colorClass = 'bg-blue-500' }) {
+function BarChart({ data, colorClass = 'bg-teal-500' }) {
   const max = Math.max(...data.map(d => d.value), 1)
   return (
     <div className="space-y-2">
       {data.map(item => (
         <div key={item.label} className="flex items-center gap-3">
-          <span className="text-sm text-gray-600 w-44 flex-shrink-0 truncate">{item.label}</span>
-          <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
+          <span className="text-sm text-stone-600 w-44 flex-shrink-0 truncate">{item.label}</span>
+          <div className="flex-1 h-5 bg-stone-100 rounded overflow-hidden">
             <div
               className={`h-full ${colorClass} rounded transition-all`}
               style={{ width: `${(item.value / max) * 100}%` }}
             />
           </div>
-          <span className="text-sm font-medium text-gray-700 w-8 text-right">{item.value}</span>
+          <span className="text-sm font-medium text-stone-700 w-8 text-right">{item.value}</span>
         </div>
       ))}
     </div>
@@ -58,7 +58,7 @@ export default function Analytics() {
     fetchData()
   }, [])
 
-  if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>
+  if (loading) return <div className="min-h-screen bg-stone-50 flex items-center justify-center">Loading...</div>
 
   // --- Computed stats ---
   const total = students.length
@@ -79,9 +79,9 @@ export default function Analytics() {
 
   // Risk distribution
   const riskData = [
-    { label: 'Low Risk', value: students.filter(s => s.risk_level === 'low').length, color: 'bg-green-500' },
+    { label: 'Low Risk', value: students.filter(s => s.risk_level === 'low').length, color: 'bg-emerald-500' },
     { label: 'Medium Risk', value: students.filter(s => s.risk_level === 'medium').length, color: 'bg-yellow-400' },
-    { label: 'High Risk', value: students.filter(s => s.risk_level === 'high').length, color: 'bg-red-500' },
+    { label: 'High Risk', value: students.filter(s => s.risk_level === 'high').length, color: 'bg-rose-500' },
     { label: 'Not Assessed', value: students.filter(s => !s.risk_level).length, color: 'bg-gray-300' },
   ]
 
@@ -126,19 +126,24 @@ export default function Analytics() {
   const meetingData = Object.entries(meetingBuckets).map(([label, value]) => ({ label, value }))
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center">
+    <div className="min-h-screen bg-stone-50">
+      <div className="bg-white border-b border-stone-100 shadow-sm px-8 h-16 flex justify-between items-center">
         <div className="flex items-center gap-6">
-          <h1 className="text-xl font-bold text-gray-900">AdvisePro</h1>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-teal-600 rounded-lg flex items-center justify-center">
+              <span className="text-white text-xs font-bold">A</span>
+            </div>
+            <span className="font-bold text-stone-900">AdvisePro</span>
+          </div>
           <nav className="flex gap-4 text-sm">
-            <button onClick={() => router.push('/dashboard/admin')} className="text-gray-500 hover:text-gray-900">Students</button>
-            <span className="font-medium text-blue-600 border-b-2 border-blue-600 pb-0.5">Analytics</span>
-            <button onClick={() => router.push('/dashboard/admin/milestones')} className="text-gray-500 hover:text-gray-900">Milestones</button>
+            <button onClick={() => router.push('/dashboard/admin')} className="text-stone-500 hover:text-stone-900">Students</button>
+            <span className="font-medium text-teal-600 border-b-2 border-teal-600 pb-0.5">Analytics</span>
+            <button onClick={() => router.push('/dashboard/admin/milestones')} className="text-stone-500 hover:text-stone-900">Milestones</button>
           </nav>
         </div>
         <button
           onClick={async () => { await supabase.auth.signOut(); window.location.href = '/login' }}
-          className="text-sm text-gray-500 hover:text-gray-900 border border-gray-200 px-3 py-1 rounded-md"
+          className="text-sm text-stone-500 hover:text-stone-900 border border-stone-200 px-3 py-1 rounded-xl"
         >
           Sign Out
         </button>
@@ -146,46 +151,46 @@ export default function Analytics() {
 
       <div className="max-w-5xl mx-auto px-8 py-8">
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">Analytics</h2>
-          <p className="text-gray-500 mt-1">Institutional overview — all students</p>
+          <h2 className="text-2xl font-bold text-stone-900">Analytics</h2>
+          <p className="text-stone-500 mt-1">Institutional overview — all students</p>
         </div>
 
         {/* Summary cards */}
         <div className="grid grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <p className="text-sm text-gray-500">Total Students</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{total}</p>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5">
+            <p className="text-sm text-stone-500">Total Students</p>
+            <p className="text-3xl font-bold text-stone-900 mt-1">{total}</p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <p className="text-sm text-gray-500">Avg Step 2 Score</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{avgStep2 ?? '—'}</p>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5">
+            <p className="text-sm text-stone-500">Avg Step 2 Score</p>
+            <p className="text-3xl font-bold text-stone-900 mt-1">{avgStep2 ?? '—'}</p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <p className="text-sm text-gray-500">Meeting Coverage</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{meetingCoverage}%</p>
-            <p className="text-xs text-gray-400 mt-1">{studentsWithMeeting} of {total} met</p>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5">
+            <p className="text-sm text-stone-500">Meeting Coverage</p>
+            <p className="text-3xl font-bold text-stone-900 mt-1">{meetingCoverage}%</p>
+            <p className="text-xs text-stone-400 mt-1">{studentsWithMeeting} of {total} met</p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <p className="text-sm text-gray-500">Milestone Completion</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{milestoneRate}%</p>
-            <p className="text-xs text-gray-400 mt-1">{completedMilestones} of {milestones.length}</p>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5">
+            <p className="text-sm text-stone-500">Milestone Completion</p>
+            <p className="text-3xl font-bold text-stone-900 mt-1">{milestoneRate}%</p>
+            <p className="text-xs text-stone-400 mt-1">{completedMilestones} of {milestones.length}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-6 mb-6">
           {/* Risk distribution */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Risk Distribution</h3>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5">
+            <h3 className="text-sm font-semibold text-stone-700 mb-4">Risk Distribution</h3>
             <div className="space-y-3">
               {riskData.map(item => (
                 <div key={item.label} className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600 w-28 flex-shrink-0">{item.label}</span>
-                  <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
+                  <span className="text-sm text-stone-600 w-28 flex-shrink-0">{item.label}</span>
+                  <div className="flex-1 h-5 bg-stone-100 rounded overflow-hidden">
                     <div className={`h-full ${item.color} rounded transition-all`}
                       style={{ width: total ? `${(item.value / total) * 100}%` : '0%' }} />
                   </div>
-                  <span className="text-sm font-medium text-gray-700 w-12 text-right">
-                    {item.value} <span className="text-gray-400 font-normal">({total ? Math.round((item.value / total) * 100) : 0}%)</span>
+                  <span className="text-sm font-medium text-stone-700 w-12 text-right">
+                    {item.value} <span className="text-stone-400 font-normal">({total ? Math.round((item.value / total) * 100) : 0}%)</span>
                   </span>
                 </div>
               ))}
@@ -193,85 +198,85 @@ export default function Analytics() {
           </div>
 
           {/* Class year distribution */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Students by Class Year</h3>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5">
+            <h3 className="text-sm font-semibold text-stone-700 mb-4">Students by Class Year</h3>
             {yearData.length === 0 ? (
-              <p className="text-sm text-gray-400">No class year data yet.</p>
+              <p className="text-sm text-stone-400">No class year data yet.</p>
             ) : (
-              <BarChart data={yearData} colorClass="bg-blue-500" />
+              <BarChart data={yearData} colorClass="bg-teal-500" />
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-6 mb-6">
           {/* Specialty distribution */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Top Specialty Interests</h3>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5">
+            <h3 className="text-sm font-semibold text-stone-700 mb-4">Top Specialty Interests</h3>
             {specialtyData.length === 0 ? (
-              <p className="text-sm text-gray-400">No specialty data yet.</p>
+              <p className="text-sm text-stone-400">No specialty data yet.</p>
             ) : (
               <BarChart data={specialtyData} colorClass="bg-purple-400" />
             )}
           </div>
 
           {/* Meeting distribution */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Meeting Frequency</h3>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5">
+            <h3 className="text-sm font-semibold text-stone-700 mb-4">Meeting Frequency</h3>
             <BarChart data={meetingData} colorClass="bg-teal-500" />
-            <p className="text-xs text-gray-400 mt-3">Total meetings logged: {notes.length}</p>
+            <p className="text-xs text-stone-400 mt-3">Total meetings logged: {notes.length}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-6 mb-6">
           {/* Step 1 status */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">USMLE Step 1 Status</h3>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5">
+            <h3 className="text-sm font-semibold text-stone-700 mb-4">USMLE Step 1 Status</h3>
             <div className="space-y-3">
               {step1Data.map(item => (
                 <div key={item.label} className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600 w-24 flex-shrink-0">{item.label}</span>
-                  <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
-                    <div className={`h-full rounded transition-all ${item.label === 'Pass' ? 'bg-green-500' : item.label === 'Fail' ? 'bg-red-400' : 'bg-gray-300'}`}
+                  <span className="text-sm text-stone-600 w-24 flex-shrink-0">{item.label}</span>
+                  <div className="flex-1 h-5 bg-stone-100 rounded overflow-hidden">
+                    <div className={`h-full rounded transition-all ${item.label === 'Pass' ? 'bg-emerald-500' : item.label === 'Fail' ? 'bg-red-400' : 'bg-gray-300'}`}
                       style={{ width: total ? `${(item.value / total) * 100}%` : '0%' }} />
                   </div>
-                  <span className="text-sm font-medium text-gray-700 w-8 text-right">{item.value}</span>
+                  <span className="text-sm font-medium text-stone-700 w-8 text-right">{item.value}</span>
                 </div>
               ))}
             </div>
-            <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
+            <div className="mt-4 pt-4 border-t border-stone-100 grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-gray-400">Avg Step 1 (numerical)</p>
-                <p className="text-lg font-bold text-gray-900">{avgStep1 ?? '—'}</p>
+                <p className="text-xs text-stone-400">Avg Step 1 (numerical)</p>
+                <p className="text-lg font-bold text-stone-900">{avgStep1 ?? '—'}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Avg Step 2</p>
-                <p className="text-lg font-bold text-gray-900">{avgStep2 ?? '—'}</p>
+                <p className="text-xs text-stone-400">Avg Step 2</p>
+                <p className="text-lg font-bold text-stone-900">{avgStep2 ?? '—'}</p>
               </div>
             </div>
           </div>
 
           {/* High risk by year */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">High Risk Students by Year</h3>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5">
+            <h3 className="text-sm font-semibold text-stone-700 mb-4">High Risk Students by Year</h3>
             {riskByYear.length === 0 ? (
-              <p className="text-sm text-gray-400">No data yet.</p>
+              <p className="text-sm text-stone-400">No data yet.</p>
             ) : (
               <div className="space-y-3">
                 {riskByYear.map(item => (
                   <div key={item.label} className="flex items-center gap-3">
-                    <span className="text-sm text-gray-600 w-12 flex-shrink-0">{item.label}</span>
-                    <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
+                    <span className="text-sm text-stone-600 w-12 flex-shrink-0">{item.label}</span>
+                    <div className="flex-1 h-5 bg-stone-100 rounded overflow-hidden">
                       <div className="h-full bg-red-400 rounded transition-all"
                         style={{ width: item.total ? `${(item.highRisk / item.total) * 100}%` : '0%' }} />
                     </div>
-                    <span className="text-sm font-medium text-gray-700 w-20 text-right text-xs">
+                    <span className="text-sm font-medium text-stone-700 w-20 text-right text-xs">
                       {item.highRisk}/{item.total} ({item.total ? Math.round((item.highRisk / item.total) * 100) : 0}%)
                     </span>
                   </div>
                 ))}
               </div>
             )}
-            <p className="text-xs text-gray-400 mt-3">Total ERAS activities logged: {activitiesCount}</p>
+            <p className="text-xs text-stone-400 mt-3">Total ERAS activities logged: {activitiesCount}</p>
           </div>
         </div>
       </div>

@@ -103,50 +103,55 @@ export default function BulkUpload() {
   const errorCount = results.filter(r => r.status === 'error').length
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center gap-4">
-        <button onClick={() => router.push('/dashboard/admin')} className="text-sm text-gray-500 hover:text-gray-900">← Back</button>
-        <h1 className="text-xl font-bold text-gray-900">AdvisePro</h1>
-        <span className="text-sm text-gray-400">· Bulk Student Import</span>
+    <div className="min-h-screen bg-stone-50">
+      <div className="bg-white border-b border-stone-100 shadow-sm px-8 h-16 flex items-center gap-4">
+        <button onClick={() => router.push('/dashboard/admin')} className="text-sm text-stone-500 hover:text-stone-900">← Back</button>
+        <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-teal-600 rounded-lg flex items-center justify-center">
+              <span className="text-white text-xs font-bold">A</span>
+            </div>
+            <span className="font-bold text-stone-900">AdvisePro</span>
+          </div>
+        <span className="text-sm text-stone-400">· Bulk Student Import</span>
       </div>
 
       <div className="max-w-3xl mx-auto px-8 py-8">
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">Bulk Import Students</h2>
-          <p className="text-gray-500 mt-1">Upload a CSV file to create multiple student accounts at once. Each student will receive a temporary password of <code className="bg-gray-100 px-1 rounded text-xs">ChangeMe123!</code> and should reset it on first login.</p>
+          <h2 className="text-2xl font-bold text-stone-900">Bulk Import Students</h2>
+          <p className="text-stone-500 mt-1">Upload a CSV file to create multiple student accounts at once. Each student will receive a temporary password of <code className="bg-stone-100 px-1 rounded text-xs">ChangeMe123!</code> and should reset it on first login.</p>
         </div>
 
         {/* Template download */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-start justify-between">
+        <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6 flex items-start justify-between">
           <div>
             <p className="text-sm font-medium text-blue-900">Start with the template</p>
-            <p className="text-xs text-blue-700 mt-0.5">Download the CSV template, fill it in, then paste or upload it below.</p>
+            <p className="text-xs text-teal-700 mt-0.5">Download the CSV template, fill it in, then paste or upload it below.</p>
           </div>
           <button onClick={downloadTemplate}
-            className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 flex-shrink-0 ml-4">
+            className="text-sm bg-teal-600 text-white px-3 py-1.5 rounded-xl hover:bg-teal-700 flex-shrink-0 ml-4">
             Download Template
           </button>
         </div>
 
         {/* CSV input */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Paste CSV content</label>
-          <p className="text-xs text-gray-400 mb-2">Required columns: <code className="bg-gray-100 px-1 rounded">full_name</code>, <code className="bg-gray-100 px-1 rounded">email</code>. All others optional.</p>
+        <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-4">
+          <label className="block text-sm font-medium text-stone-700 mb-2">Paste CSV content</label>
+          <p className="text-xs text-stone-400 mb-2">Required columns: <code className="bg-stone-100 px-1 rounded">full_name</code>, <code className="bg-stone-100 px-1 rounded">email</code>. All others optional.</p>
           <textarea
             value={csvText}
             onChange={e => { setCsvText(e.target.value); setPreview([]); setResults([]); setDone(false) }}
             rows={8}
             placeholder={TEMPLATE_HEADERS + '\n' + TEMPLATE_EXAMPLE}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
           <div className="flex gap-3 mt-3">
             <button onClick={handleParse} disabled={!csvText.trim()}
-              className="bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 disabled:opacity-50">
+              className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-700 disabled:opacity-50">
               Preview
             </button>
             {preview.length > 0 && errors.length === 0 && !done && (
               <button onClick={handleUpload} disabled={running}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                className="bg-teal-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-teal-700 disabled:opacity-50">
                 {running ? `Creating... (${progress}/${preview.length})` : `Create ${preview.length} Student${preview.length !== 1 ? 's' : ''}`}
               </button>
             )}
@@ -155,32 +160,32 @@ export default function BulkUpload() {
 
         {/* Errors */}
         {errors.length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 mb-4">
             <p className="text-sm font-medium text-red-800 mb-2">Fix these errors before importing:</p>
             <ul className="space-y-1">
-              {errors.map((e, i) => <li key={i} className="text-xs text-red-700">• {e}</li>)}
+              {errors.map((e, i) => <li key={i} className="text-xs text-rose-700">• {e}</li>)}
             </ul>
           </div>
         )}
 
         {/* Preview table */}
         {preview.length > 0 && errors.length === 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 mb-4">
-            <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center">
-              <p className="text-sm font-semibold text-gray-700">Preview — {preview.length} students</p>
-              {!done && <p className="text-xs text-gray-400">Review before importing</p>}
+          <div className="bg-white rounded-2xl border border-stone-200 mb-4">
+            <div className="px-5 py-3 border-b border-stone-100 flex justify-between items-center">
+              <p className="text-sm font-semibold text-stone-700">Preview — {preview.length} students</p>
+              {!done && <p className="text-xs text-stone-400">Review before importing</p>}
             </div>
-            <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
+            <div className="divide-y divide-stone-100 max-h-80 overflow-y-auto">
               {preview.map((row, i) => {
                 const result = results[i]
                 return (
                   <div key={i} className="px-5 py-3 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{row.full_name}</p>
-                      <p className="text-xs text-gray-500">{row.email} {row.class_year ? `· ${row.class_year}` : ''} {row.specialty_interest ? `· ${row.specialty_interest}` : ''}</p>
+                      <p className="text-sm font-medium text-stone-900">{row.full_name}</p>
+                      <p className="text-xs text-stone-500">{row.email} {row.class_year ? `· ${row.class_year}` : ''} {row.specialty_interest ? `· ${row.specialty_interest}` : ''}</p>
                     </div>
                     {result && (
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${result.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${result.status === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
                         {result.status === 'success' ? '✓ Created' : `✗ ${result.message}`}
                       </span>
                     )}
@@ -193,13 +198,13 @@ export default function BulkUpload() {
 
         {/* Progress bar */}
         {running && (
-          <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
+          <div className="bg-white rounded-2xl border border-stone-200 p-4 mb-4">
+            <div className="flex justify-between text-sm text-stone-600 mb-2">
               <span>Creating accounts...</span>
               <span>{progress} / {preview.length}</span>
             </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full transition-all"
+            <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+              <div className="h-full bg-teal-500 rounded-full transition-all"
                 style={{ width: `${(progress / preview.length) * 100}%` }} />
             </div>
           </div>
@@ -207,19 +212,19 @@ export default function BulkUpload() {
 
         {/* Done summary */}
         {done && (
-          <div className={`rounded-lg border p-5 ${errorCount === 0 ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
-            <p className="font-semibold text-gray-900 mb-1">Import complete</p>
-            <p className="text-sm text-gray-700">
-              {successCount > 0 && <span className="text-green-700">{successCount} student{successCount !== 1 ? 's' : ''} created successfully. </span>}
-              {errorCount > 0 && <span className="text-red-700">{errorCount} failed (see above). </span>}
+          <div className={`rounded-lg border p-5 ${errorCount === 0 ? 'bg-emerald-50 border-green-200' : 'bg-amber-50 border-yellow-200'}`}>
+            <p className="font-semibold text-stone-900 mb-1">Import complete</p>
+            <p className="text-sm text-stone-700">
+              {successCount > 0 && <span className="text-emerald-700">{successCount} student{successCount !== 1 ? 's' : ''} created successfully. </span>}
+              {errorCount > 0 && <span className="text-rose-700">{errorCount} failed (see above). </span>}
             </p>
             <div className="flex gap-3 mt-3">
               <button onClick={() => router.push('/dashboard/admin')}
-                className="text-sm bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-700">
+                className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-gray-700">
                 Go to Students
               </button>
               <button onClick={() => { setCsvText(''); setPreview([]); setResults([]); setDone(false); setErrors([]) }}
-                className="text-sm border border-gray-200 text-gray-600 px-4 py-2 rounded-md hover:bg-gray-50">
+                className="text-sm border border-stone-200 text-stone-600 px-4 py-2 rounded-xl hover:bg-stone-50">
                 Import More
               </button>
             </div>

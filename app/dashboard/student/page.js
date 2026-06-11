@@ -188,11 +188,21 @@ function CompetitivenessCard({ result, student }) {
   )
 }
 
+const YEAR_ORDER = ['MS1', 'MS2', 'MS3', 'MS4']
+
+function specialtyAbbrev(name) {
+  if (!name) return ''
+  const words = name.split(/[\s/]+/).filter(Boolean)
+  if (words.length === 1) return name.slice(0, 3)
+  return words.map(w => w[0]).join('').toUpperCase().slice(0, 3)
+}
+
 export default function StudentDashboard() {
   const [profile, setProfile] = useState(null)
   const [student, setStudent] = useState(null)
   const [loading, setLoading] = useState(true)
   const [milestones, setMilestones] = useState([])
+  const [openYears, setOpenYears] = useState({})
   const [activitiesCount, setActivitiesCount] = useState(0)
   const [publications, setPublications] = useState([])
   const [rotationsCount, setRotationsCount] = useState(0)
@@ -209,13 +219,11 @@ export default function StudentDashboard() {
 
       if (studentData) {
         // Auto-assign any missing specialty + universal milestones on every dashboard load
-        const [{ data: universalMs }, { data: specialtyMs }] = await Promise.all([
-          supabase.from('milestones').select('id, specialty').is('specialty', null),
-          studentData.specialty_interest
-            ? supabase.from('milestones').select('id, specialty').eq('specialty', studentData.specialty_interest)
-            : Promise.resolve({ data: [] }),
-        ])
-        const allMilestones = [...(universalMs || []), ...(specialtyMs || [])]
+        // Fetch all milestones and filter in JS to avoid PostgREST .or() issues with spaces in specialty names
+        const { data: allMilestonesRaw } = await supabase.from('milestones').select('id, specialty')
+        const allMilestones = (allMilestonesRaw || []).filter(m =>
+          m.specialty === null || m.specialty === studentData.specialty_interest
+        )
 
         if (allMilestones?.length > 0) {
           const { data: assigned } = await supabase
@@ -246,6 +254,9 @@ export default function StudentDashboard() {
           .from('advising_notes').select('*, profiles(full_name)').eq('student_id', studentData.id).order('meeting_date', { ascending: false })
 
         setMilestones(milestonesData || [])
+        // Auto-expand the student's current year, collapse others
+        const currentYear = studentData?.class_year ?? 'MS3'
+        setOpenYears({ MS1: currentYear === 'MS1', MS2: currentYear === 'MS2', MS3: currentYear === 'MS3', MS4: currentYear === 'MS4' })
         setActivitiesCount(count || 0)
         setPublications(pubData || [])
         setRotationsCount(rotCount || 0)
@@ -399,105 +410,153 @@ export default function StudentDashboard() {
           )}
         </div>
 
-        {/* Milestones */}
+        {/* Milestones — year-based accordion */}
         {(() => {
-          const universalMs = milestones.filter(m => !m.milestones?.specialty)
-          const specialtyMs = milestones.filter(m => m.milestones?.specialty)
+          const totalCompleted = milestones.filter(m => m.status === 'completed').length
+          const specialtyAbbr = specialtyAbbrev(student?.specialty_interest)
 
-          const MilestoneSection = ({ items, accentColor = 'teal' }) => (
-            <>
-              {['MS1', 'MS2', 'MS3', 'MS4'].map(year => {
-                const yearMs = items.filter(m => m.milestones?.due_year === year)
-                if (yearMs.length === 0) return null
-                const completed = yearMs.filter(m => m.status === 'completed').length
-                return (
-                  <div key={year} className="mb-5 last:mb-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">{year}</p>
-                      <p className="text-xs text-stone-400">{completed}/{yearMs.length} complete</p>
-                    </div>
-                    <div className="space-y-2">
-                      {yearMs.map(m => (
-                        <div key={m.id} className="flex items-center gap-3">
-                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                            m.status === 'completed' ? 'bg-emerald-500' :
-                            m.status === 'in_progress' ? 'bg-amber-400' : 'bg-stone-200'}`} />
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm truncate ${m.status === 'completed' ? 'text-stone-300 line-through' : 'text-stone-800'}`}>
-                              {m.milestones?.title}
-                            </p>
-                            {m.milestones?.description && m.status !== 'completed' && (
-                              <p className="text-xs text-stone-400 mt-0.5 truncate">{m.milestones.description}</p>
-                            )}
-                          </div>
-                          {m.milestones?.priority === 'high' && m.status !== 'completed' && (
-                            <span className="text-xs bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded flex-shrink-0">High</span>
-                          )}
-                          <select
-                            value={m.status}
-                            onChange={async (e) => {
-                              const newStatus = e.target.value
-                              await supabase.from('student_milestones')
-                                .update({ status: newStatus, completed_date: newStatus === 'completed' ? new Date().toISOString().split('T')[0] : null })
-                                .eq('id', m.id)
-                              setMilestones(prev => prev.map(item => item.id === m.id ? { ...item, status: newStatus } : item))
-                            }}
-                            className={`text-xs px-2 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-400 flex-shrink-0 ${
-                              m.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                              m.status === 'in_progress' ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-500'}`}>
-                            <option value="not_started">Not Started</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                          </select>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </>
-          )
+          const updateStatus = async (milestoneRowId, newStatus) => {
+            await supabase.from('student_milestones')
+              .update({ status: newStatus, completed_date: newStatus === 'completed' ? new Date().toISOString().split('T')[0] : null })
+              .eq('id', milestoneRowId)
+            setMilestones(prev => prev.map(item => item.id === milestoneRowId ? { ...item, status: newStatus } : item))
+          }
 
           return (
-            <div className="mt-4 mb-8 space-y-4">
-              {/* Specialty track */}
-              {specialtyMs.length > 0 && student?.specialty_interest && (
-                <div className="bg-white rounded-2xl shadow-sm border border-teal-100 p-6">
-                  <div className="flex items-center justify-between mb-5">
-                    <div>
-                      <h3 className="text-xs font-semibold text-teal-600 uppercase tracking-wide">{student.specialty_interest} Track</h3>
-                      <p className="text-xs text-stone-400 mt-0.5">
-                        {specialtyMs.filter(m => m.status === 'completed').length}/{specialtyMs.length} complete · sourced from ACGME milestones & specialty societies
-                      </p>
-                    </div>
-                    <span className="w-8 h-8 bg-teal-50 rounded-xl flex items-center justify-center text-base">🎯</span>
+            <div className="mt-4 mb-8">
+              <div className="bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden">
+                {/* Header */}
+                <div className="px-6 py-5 border-b border-stone-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-stone-900">Milestone Roadmap</h3>
+                    <p className="text-xs text-stone-400 mt-0.5">
+                      {totalCompleted}/{milestones.length} complete
+                      {student?.specialty_interest ? ` · Universal + ${student.specialty_interest} track` : ' · Universal milestones'}
+                    </p>
                   </div>
-                  <MilestoneSection items={specialtyMs} />
-                </div>
-              )}
-
-              {/* Universal milestones */}
-              {universalMs.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6">
-                  <div className="flex items-center justify-between mb-5">
-                    <div>
-                      <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Universal Milestones</h3>
-                      <p className="text-xs text-stone-400 mt-0.5">
-                        {universalMs.filter(m => m.status === 'completed').length}/{universalMs.length} complete · required of all students
-                      </p>
+                  {milestones.length > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-1.5 w-24 bg-stone-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-teal-500 rounded-full transition-all"
+                          style={{ width: `${Math.round((totalCompleted / milestones.length) * 100)}%` }} />
+                      </div>
+                      <span className="text-xs text-stone-400">{Math.round((totalCompleted / milestones.length) * 100)}%</span>
                     </div>
-                    <span className="w-8 h-8 bg-stone-50 rounded-xl flex items-center justify-center text-base">📋</span>
-                  </div>
-                  <MilestoneSection items={universalMs} />
+                  )}
                 </div>
-              )}
 
-              {milestones.length === 0 && (
-                <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-8 text-center">
-                  <p className="text-stone-400 text-sm">No milestones assigned yet.</p>
-                  <p className="text-stone-300 text-xs mt-1">Set your specialty interest in your profile to unlock your specialty track.</p>
-                </div>
-              )}
+                {milestones.length === 0 ? (
+                  <div className="px-6 py-10 text-center">
+                    <p className="text-stone-400 text-sm">No milestones assigned yet.</p>
+                    <p className="text-stone-300 text-xs mt-1">Set your specialty interest in your profile to unlock your specialty track.</p>
+                  </div>
+                ) : (
+                  YEAR_ORDER.map((year, yi) => {
+                    const yearMs = milestones.filter(m => m.milestones?.due_year === year)
+                    if (yearMs.length === 0) return null
+                    const yearCompleted = yearMs.filter(m => m.status === 'completed').length
+                    const allDone = yearCompleted === yearMs.length
+                    const isOpen = openYears[year] ?? false
+
+                    return (
+                      <div key={year} className={yi > 0 ? 'border-t border-stone-100' : ''}>
+                        {/* Year header — clickable */}
+                        <button
+                          onClick={() => setOpenYears(prev => ({ ...prev, [year]: !prev[year] }))}
+                          className="w-full px-6 py-4 flex items-center gap-4 hover:bg-stone-50 transition-colors text-left"
+                        >
+                          {/* Completion ring */}
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold border-2 ${
+                            allDone ? 'border-emerald-400 bg-emerald-50 text-emerald-700' :
+                            yearCompleted > 0 ? 'border-teal-300 bg-teal-50 text-teal-700' :
+                            'border-stone-200 bg-stone-50 text-stone-400'}`}>
+                            {allDone ? '✓' : year.replace('MS', '')}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-stone-900">{year}</span>
+                              {allDone && <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">Complete</span>}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="h-1 w-20 bg-stone-100 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full transition-all ${allDone ? 'bg-emerald-400' : 'bg-teal-400'}`}
+                                  style={{ width: `${Math.round((yearCompleted / yearMs.length) * 100)}%` }} />
+                              </div>
+                              <span className="text-xs text-stone-400">{yearCompleted}/{yearMs.length} done</span>
+                            </div>
+                          </div>
+                          <span className={`text-stone-300 text-sm transition-transform ${isOpen ? 'rotate-180' : ''}`}>▾</span>
+                        </button>
+
+                        {/* Expanded milestone list */}
+                        {isOpen && (
+                          <div className="px-6 pb-4 space-y-2 bg-stone-50/50">
+                            {yearMs.map(m => {
+                              const isSpecialty = !!m.milestones?.specialty
+                              return (
+                                <div key={m.id} className={`flex items-start gap-3 py-2.5 px-3 rounded-xl ${
+                                  m.status === 'completed' ? 'opacity-60' : 'bg-white border border-stone-100 shadow-sm'}`}>
+                                  {/* Status dot */}
+                                  <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${
+                                    m.status === 'completed' ? 'bg-emerald-400' :
+                                    m.status === 'in_progress' ? 'bg-amber-400' : 'bg-stone-200'}`} />
+
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className={`text-sm font-medium ${m.status === 'completed' ? 'text-stone-400 line-through' : 'text-stone-800'}`}>
+                                        {m.milestones?.title}
+                                      </p>
+                                      {isSpecialty && (
+                                        <span className="text-xs bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded font-medium flex-shrink-0">
+                                          {specialtyAbbr}
+                                        </span>
+                                      )}
+                                      {m.milestones?.priority === 'high' && m.status !== 'completed' && (
+                                        <span className="text-xs bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded flex-shrink-0">High</span>
+                                      )}
+                                    </div>
+                                    {m.milestones?.description && m.status !== 'completed' && (
+                                      <p className="text-xs text-stone-400 mt-0.5">{m.milestones.description}</p>
+                                    )}
+                                    {m.milestones?.category && (
+                                      <span className="text-xs text-stone-300 mt-0.5 inline-block">{m.milestones.category}</span>
+                                    )}
+                                  </div>
+
+                                  <select
+                                    value={m.status}
+                                    onChange={e => updateStatus(m.id, e.target.value)}
+                                    className={`text-xs px-2 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-400 flex-shrink-0 ${
+                                      m.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                                      m.status === 'in_progress' ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-500'}`}>
+                                    <option value="not_started">Not Started</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                  </select>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+
+                {/* Legend */}
+                {milestones.length > 0 && student?.specialty_interest && (
+                  <div className="px-6 py-3 border-t border-stone-100 flex items-center gap-4 text-xs text-stone-400">
+                    <span className="flex items-center gap-1.5">
+                      <span className="bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded font-medium">{specialtyAbbr}</span>
+                      {student.specialty_interest}-specific milestone
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-stone-200 inline-block" />
+                      Universal (all students)
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )
         })()}

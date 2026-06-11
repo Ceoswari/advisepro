@@ -96,6 +96,31 @@ export default function EditStudentProfile() {
       return
     }
 
+    // Auto-assign specialty milestones when specialty changes
+    if (updatedStudent.specialty_interest) {
+      const { data: specialtyMilestones } = await supabase
+        .from('milestones')
+        .select('id')
+        .eq('specialty', updatedStudent.specialty_interest)
+
+      if (specialtyMilestones?.length > 0) {
+        const { data: existing } = await supabase
+          .from('student_milestones')
+          .select('milestone_id')
+          .eq('student_id', studentId)
+          .in('milestone_id', specialtyMilestones.map(m => m.id))
+
+        const existingIds = new Set(existing?.map(e => e.milestone_id) || [])
+        const toInsert = specialtyMilestones
+          .filter(m => !existingIds.has(m.id))
+          .map(m => ({ student_id: studentId, milestone_id: m.id, status: 'not_started' }))
+
+        if (toInsert.length > 0) {
+          await supabase.from('student_milestones').insert(toInsert)
+        }
+      }
+    }
+
     router.push('/dashboard/student')
   }
 
@@ -128,23 +153,27 @@ export default function EditStudentProfile() {
               className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
               <option value="">Select a specialty</option>
               <option>Anesthesiology</option>
+              <option>Child Neurology</option>
               <option>Dermatology</option>
+              <option>Diagnostic Radiology</option>
               <option>Emergency Medicine</option>
               <option>Family Medicine</option>
+              <option>General Surgery</option>
               <option>Internal Medicine</option>
+              <option>Internal Medicine/Pediatrics</option>
+              <option>Interventional Radiology</option>
+              <option>Neurological Surgery</option>
               <option>Neurology</option>
               <option>Obstetrics and Gynecology</option>
-              <option>Ophthalmology</option>
-              <option>Orthopedic Surgery</option>
+              <option>Orthopaedic Surgery</option>
               <option>Otolaryngology</option>
               <option>Pathology</option>
               <option>Pediatrics</option>
               <option>Physical Medicine and Rehabilitation</option>
               <option>Plastic Surgery</option>
               <option>Psychiatry</option>
-              <option>Radiology</option>
-              <option>Surgery</option>
-              <option>Urology</option>
+              <option>Radiation Oncology</option>
+              <option>Vascular Surgery</option>
             </select>
           </div>
 

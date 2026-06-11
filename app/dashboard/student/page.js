@@ -208,7 +208,7 @@ export default function StudentDashboard() {
 
       if (studentData) {
         const { data: milestonesData } = await supabase
-          .from('student_milestones').select('*, milestones(*)').eq('student_id', studentData.id).order('created_at', { ascending: true })
+          .from('student_milestones').select('*, milestones(id, title, description, due_year, category, is_required, specialty, priority, source)').eq('student_id', studentData.id).order('created_at', { ascending: true })
         const { count } = await supabase.from('activities').select('id', { count: 'exact', head: true }).eq('student_id', studentData.id)
         const { data: pubData } = await supabase.from('publications').select('publication_type').eq('student_id', studentData.id)
         const { count: rotCount } = await supabase.from('away_rotations').select('id', { count: 'exact', head: true }).eq('student_id', studentData.id)
@@ -370,52 +370,107 @@ export default function StudentDashboard() {
         </div>
 
         {/* Milestones */}
-        <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6 mt-4 mb-8">
-          <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-5">Milestones</h3>
-          {['MS1', 'MS2', 'MS3', 'MS4'].map(year => {
-            const yearMilestones = milestones.filter(m => m.milestones?.due_year === year)
-            if (yearMilestones.length === 0) return null
-            const completed = yearMilestones.filter(m => m.status === 'completed').length
-            return (
-              <div key={year} className="mb-6 last:mb-0">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">{year}</p>
-                  <p className="text-xs text-stone-400">{completed}/{yearMilestones.length} complete</p>
-                </div>
-                <div className="space-y-2">
-                  {yearMilestones.map(m => (
-                    <div key={m.id} className="flex items-center gap-3">
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                        m.status === 'completed' ? 'bg-emerald-500' :
-                        m.status === 'in_progress' ? 'bg-amber-400' : 'bg-stone-200'}`} />
-                      <div className="flex-1">
-                        <p className={`text-sm ${m.status === 'completed' ? 'text-stone-300 line-through' : 'text-stone-800'}`}>
-                          {m.milestones?.title}
-                        </p>
-                      </div>
-                      <select
-                        value={m.status}
-                        onChange={async (e) => {
-                          const newStatus = e.target.value
-                          await supabase.from('student_milestones')
-                            .update({ status: newStatus, completed_date: newStatus === 'completed' ? new Date().toISOString().split('T')[0] : null })
-                            .eq('id', m.id)
-                          setMilestones(prev => prev.map(item => item.id === m.id ? { ...item, status: newStatus } : item))
-                        }}
-                        className={`text-xs px-2 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-400 ${
-                          m.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                          m.status === 'in_progress' ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-500'}`}>
-                        <option value="not_started">Not Started</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                      </select>
+        {(() => {
+          const universalMs = milestones.filter(m => !m.milestones?.specialty)
+          const specialtyMs = milestones.filter(m => m.milestones?.specialty)
+
+          const MilestoneSection = ({ items, accentColor = 'teal' }) => (
+            <>
+              {['MS1', 'MS2', 'MS3', 'MS4'].map(year => {
+                const yearMs = items.filter(m => m.milestones?.due_year === year)
+                if (yearMs.length === 0) return null
+                const completed = yearMs.filter(m => m.status === 'completed').length
+                return (
+                  <div key={year} className="mb-5 last:mb-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">{year}</p>
+                      <p className="text-xs text-stone-400">{completed}/{yearMs.length} complete</p>
                     </div>
-                  ))}
+                    <div className="space-y-2">
+                      {yearMs.map(m => (
+                        <div key={m.id} className="flex items-center gap-3">
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                            m.status === 'completed' ? 'bg-emerald-500' :
+                            m.status === 'in_progress' ? 'bg-amber-400' : 'bg-stone-200'}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm truncate ${m.status === 'completed' ? 'text-stone-300 line-through' : 'text-stone-800'}`}>
+                              {m.milestones?.title}
+                            </p>
+                            {m.milestones?.description && m.status !== 'completed' && (
+                              <p className="text-xs text-stone-400 mt-0.5 truncate">{m.milestones.description}</p>
+                            )}
+                          </div>
+                          {m.milestones?.priority === 'high' && m.status !== 'completed' && (
+                            <span className="text-xs bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded flex-shrink-0">High</span>
+                          )}
+                          <select
+                            value={m.status}
+                            onChange={async (e) => {
+                              const newStatus = e.target.value
+                              await supabase.from('student_milestones')
+                                .update({ status: newStatus, completed_date: newStatus === 'completed' ? new Date().toISOString().split('T')[0] : null })
+                                .eq('id', m.id)
+                              setMilestones(prev => prev.map(item => item.id === m.id ? { ...item, status: newStatus } : item))
+                            }}
+                            className={`text-xs px-2 py-1 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-400 flex-shrink-0 ${
+                              m.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                              m.status === 'in_progress' ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-500'}`}>
+                            <option value="not_started">Not Started</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </>
+          )
+
+          return (
+            <div className="mt-4 mb-8 space-y-4">
+              {/* Specialty track */}
+              {specialtyMs.length > 0 && student?.specialty_interest && (
+                <div className="bg-white rounded-2xl shadow-sm border border-teal-100 p-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <h3 className="text-xs font-semibold text-teal-600 uppercase tracking-wide">{student.specialty_interest} Track</h3>
+                      <p className="text-xs text-stone-400 mt-0.5">
+                        {specialtyMs.filter(m => m.status === 'completed').length}/{specialtyMs.length} complete · sourced from ACGME milestones & specialty societies
+                      </p>
+                    </div>
+                    <span className="w-8 h-8 bg-teal-50 rounded-xl flex items-center justify-center text-base">🎯</span>
+                  </div>
+                  <MilestoneSection items={specialtyMs} />
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )}
+
+              {/* Universal milestones */}
+              {universalMs.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Universal Milestones</h3>
+                      <p className="text-xs text-stone-400 mt-0.5">
+                        {universalMs.filter(m => m.status === 'completed').length}/{universalMs.length} complete · required of all students
+                      </p>
+                    </div>
+                    <span className="w-8 h-8 bg-stone-50 rounded-xl flex items-center justify-center text-base">📋</span>
+                  </div>
+                  <MilestoneSection items={universalMs} />
+                </div>
+              )}
+
+              {milestones.length === 0 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-8 text-center">
+                  <p className="text-stone-400 text-sm">No milestones assigned yet.</p>
+                  <p className="text-stone-300 text-xs mt-1">Set your specialty interest in your profile to unlock your specialty track.</p>
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </div>
     </div>
   )

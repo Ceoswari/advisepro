@@ -207,8 +207,34 @@ export default function StudentDashboard() {
       const { data: studentData } = await supabase.from('students').select('*').eq('profile_id', user.id).single()
 
       if (studentData) {
+        // Auto-assign any missing specialty + universal milestones on every dashboard load
+        const { data: allMilestones } = await supabase
+          .from('milestones')
+          .select('id, specialty')
+          .or(`specialty.is.null,specialty.eq.${studentData.specialty_interest || '__none__'}`)
+
+        if (allMilestones?.length > 0) {
+          const { data: assigned } = await supabase
+            .from('student_milestones')
+            .select('milestone_id')
+            .eq('student_id', studentData.id)
+
+          const assignedIds = new Set(assigned?.map(a => a.milestone_id) || [])
+          const toInsert = allMilestones
+            .filter(m => !assignedIds.has(m.id))
+            .map(m => ({ student_id: studentData.id, milestone_id: m.id, status: 'not_started' }))
+
+          if (toInsert.length > 0) {
+            await supabase.from('student_milestones').insert(toInsert)
+          }
+        }
+
         const { data: milestonesData } = await supabase
-          .from('student_milestones').select('*, milestones(id, title, description, due_year, category, is_required, specialty, priority, source)').eq('student_id', studentData.id).order('created_at', { ascending: true })
+          .from('student_milestones')
+          .select('*, milestones(id, title, description, due_year, category, specialty, priority, source)')
+          .eq('student_id', studentData.id)
+          .order('created_at', { ascending: true })
+
         const { count } = await supabase.from('activities').select('id', { count: 'exact', head: true }).eq('student_id', studentData.id)
         const { data: pubData } = await supabase.from('publications').select('publication_type').eq('student_id', studentData.id)
         const { count: rotCount } = await supabase.from('away_rotations').select('id', { count: 'exact', head: true }).eq('student_id', studentData.id)

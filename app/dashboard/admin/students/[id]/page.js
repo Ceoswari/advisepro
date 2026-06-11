@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useParams, useRouter } from 'next/navigation'
+import DashboardNav from '@/app/components/DashboardNav'
 import { calculateCompetitiveness, TIER_LABELS } from '@/lib/scoring'
 import { useRef } from 'react'
 
@@ -194,23 +195,14 @@ export default function AdminStudentDetail() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      <div className="bg-white border-b border-stone-100 shadow-sm px-8 h-16 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <button onClick={() => router.push('/dashboard/admin')} className="text-sm text-stone-500 hover:text-stone-900">← Back</button>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-teal-600 rounded-lg flex items-center justify-center">
-              <span className="text-white text-xs font-bold">A</span>
-            </div>
-            <span className="font-bold text-stone-900">AdvisePro</span>
-          </div>
-        </div>
+      <DashboardNav backHref="/dashboard/admin">
         <button
           onClick={() => router.push(`/dashboard/admin/students/${id}/edit`)}
           className="bg-teal-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-teal-700"
         >
           Edit Student
         </button>
-      </div>
+      </DashboardNav>
 
       <div className="max-w-5xl mx-auto px-8 py-8">
         {/* Header */}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import DashboardNav from '@/app/components/DashboardNav'
 
 const ERAS_TYPES = [
   'Community Service / Volunteer — Medical/Clinical',
@@ -218,17 +219,7 @@ export default function Activities() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      <div className="bg-white border-b border-stone-100 shadow-sm px-8 h-16 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <button onClick={() => router.push('/dashboard/student')} className="text-sm text-stone-400 hover:text-stone-700 transition-colors">← Back</button>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-teal-600 rounded-lg flex items-center justify-center">
-              <span className="text-white text-xs font-bold">A</span>
-            </div>
-            <span className="font-bold text-stone-900">AdvisePro</span>
-          </div>
-        </div>
-      </div>
+      <DashboardNav backHref="/dashboard/student" />
 
       <div className="max-w-3xl mx-auto px-8 py-8">
         <div className="flex items-center justify-between mb-8">

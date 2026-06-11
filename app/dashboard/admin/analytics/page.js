@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import DashboardNav from '@/app/components/DashboardNav'
 
 function BarChart({ data, colorClass = 'bg-teal-500' }) {
   const max = Math.max(...data.map(d => d.value), 1)
@@ -127,27 +128,11 @@ export default function Analytics() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      <div className="bg-white border-b border-stone-100 shadow-sm px-8 h-16 flex justify-between items-center">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-teal-600 rounded-lg flex items-center justify-center">
-              <span className="text-white text-xs font-bold">A</span>
-            </div>
-            <span className="font-bold text-stone-900">AdvisePro</span>
-          </div>
-          <nav className="flex gap-4 text-sm">
-            <button onClick={() => router.push('/dashboard/admin')} className="text-stone-500 hover:text-stone-900">Students</button>
-            <span className="font-medium text-teal-600 border-b-2 border-teal-600 pb-0.5">Analytics</span>
-            <button onClick={() => router.push('/dashboard/admin/milestones')} className="text-stone-500 hover:text-stone-900">Milestones</button>
-          </nav>
-        </div>
-        <button
-          onClick={async () => { await supabase.auth.signOut(); window.location.href = '/login' }}
-          className="text-sm text-stone-500 hover:text-stone-900 border border-stone-200 px-3 py-1 rounded-xl"
-        >
-          Sign Out
-        </button>
-      </div>
+      <DashboardNav navItems={[
+        { label: 'Students', href: '/dashboard/admin' },
+        { label: 'Analytics', href: '/dashboard/admin/analytics' },
+        { label: 'Milestones', href: '/dashboard/admin/milestones' },
+      ]} />
 
       <div className="max-w-5xl mx-auto px-8 py-8">
         <div className="mb-8">

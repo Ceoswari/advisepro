@@ -347,12 +347,12 @@ export default function StudentDashboard() {
     <div className="min-h-screen bg-stone-50">
       {/* Nav */}
       <div className="bg-white border-b border-stone-100 shadow-sm px-8 h-16 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
+        <button onClick={() => router.push('/dashboard/student')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 bg-teal-600 rounded-xl flex items-center justify-center">
             <span className="text-white text-sm font-bold">A</span>
           </div>
           <span className="font-bold text-stone-900 text-lg">AdvisePro</span>
-        </div>
+        </button>
         <div className="flex items-center gap-3">
           <button onClick={() => router.push('/dashboard/student/edit')}
             className="text-sm text-stone-500 hover:text-stone-900 border border-stone-200 px-3 py-1.5 rounded-xl transition-colors">

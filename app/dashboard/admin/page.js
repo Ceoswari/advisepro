@@ -86,12 +86,12 @@ export default function AdminDashboard() {
       {/* Nav */}
       <div className="bg-white border-b border-stone-100 shadow-sm px-8 h-16 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
+          <button onClick={() => router.push('/dashboard/admin')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 bg-teal-600 rounded-xl flex items-center justify-center">
               <span className="text-white text-sm font-bold">A</span>
             </div>
             <span className="font-bold text-stone-900 text-lg">AdvisePro</span>
-          </div>
+          </button>
           <nav className="flex gap-1">
             <span className="text-sm font-medium text-teal-700 bg-teal-50 px-3 py-1.5 rounded-lg">Students</span>
             <button onClick={() => router.push('/dashboard/admin/analytics')}

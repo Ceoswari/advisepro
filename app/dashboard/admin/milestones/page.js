@@ -14,7 +14,7 @@ const SPECIALTIES = [
   'Psychiatry','Radiation Oncology','Vascular Surgery',
 ]
 
-const emptyForm = { title: '', due_year: 'MS1', category: '', description: '', is_required: true }
+const emptyForm = { title: '', due_year: 'MS1', category: '', description: '' }
 
 export default function MilestoneManagement() {
   const router = useRouter()
@@ -63,7 +63,6 @@ export default function MilestoneManagement() {
         due_year: form.due_year,
         category: form.category || null,
         description: form.description || null,
-        is_required: form.is_required,
       })
       .select()
       .single()
@@ -179,10 +178,6 @@ export default function MilestoneManagement() {
                   placeholder="Additional details about this milestone..."
                   className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
               </div>
-              <div className="col-span-2 flex items-center gap-2">
-                <input type="checkbox" name="is_required" checked={form.is_required} onChange={handleChange} className="w-4 h-4" />
-                <label className="text-sm text-stone-700">Required milestone</label>
-              </div>
             </div>
             {error && <p className="text-rose-500 text-sm">{error}</p>}
             <div className="flex gap-2">
@@ -213,9 +208,6 @@ export default function MilestoneManagement() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-medium text-stone-900">{m.title}</p>
-                        {m.is_required && (
-                          <span className="text-xs bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded">Required</span>
-                        )}
                         {m.category && (
                           <span className="text-xs bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded">{m.category}</span>
                         )}

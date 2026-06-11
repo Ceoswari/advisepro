@@ -14,10 +14,13 @@ export default function AdvisorDashboard() {
   const [students, setStudents] = useState([])
   const [lastMeetings, setLastMeetings] = useState({})
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('students')
   const [search, setSearch] = useState('')
   const [filterRisk, setFilterRisk] = useState('')
   const [filterYear, setFilterYear] = useState('')
   const [showAttentionOnly, setShowAttentionOnly] = useState(false)
+  const [conversations, setConversations] = useState([])
+  const [myProfileId, setMyProfileId] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -27,10 +30,11 @@ export default function AdvisorDashboard() {
 
       const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       const { data: assignments } = await supabase.from('advisor_student').select('student_id').eq('advisor_profile_id', user.id)
+      setMyProfileId(user.id)
 
       if (assignments?.length > 0) {
         const studentIds = assignments.map(a => a.student_id)
-        const { data: studentsData } = await supabase.from('students').select('*, profiles(full_name, email)').in('id', studentIds)
+        const { data: studentsData } = await supabase.from('students').select('*, profiles(full_name, email, id)').in('id', studentIds)
         const { data: notesData } = await supabase.from('advising_notes').select('student_id, meeting_date').in('student_id', studentIds).order('meeting_date', { ascending: false })
 
         const meetingMap = {}
@@ -38,6 +42,31 @@ export default function AdvisorDashboard() {
 
         setStudents(studentsData || [])
         setLastMeetings(meetingMap)
+
+        // Build conversation list: latest message per student
+        const studentProfileIds = (studentsData || []).map(s => s.profiles?.id).filter(Boolean)
+        if (studentProfileIds.length > 0) {
+          const { data: msgs } = await supabase
+            .from('messages')
+            .select('*')
+            .or(`sender_id.in.(${[user.id, ...studentProfileIds].join(',')}),recipient_id.in.(${[user.id, ...studentProfileIds].join(',')})`)
+            .order('created_at', { ascending: false })
+
+          // Group by student conversation partner
+          const convMap = {}
+          for (const msg of msgs || []) {
+            const partnerId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id
+            if (studentProfileIds.includes(partnerId) && !convMap[partnerId]) {
+              convMap[partnerId] = msg
+            }
+          }
+          // Match back to student records
+          const convList = Object.entries(convMap).map(([profileId, lastMsg]) => {
+            const student = studentsData?.find(s => s.profiles?.id === profileId)
+            return { student, lastMsg, profileId }
+          }).sort((a, b) => new Date(b.lastMsg.created_at) - new Date(a.lastMsg.created_at))
+          setConversations(convList)
+        }
       }
 
       setProfile(profileData)
@@ -105,9 +134,68 @@ export default function AdvisorDashboard() {
       <div className="max-w-4xl mx-auto px-8 py-8">
         {/* Header */}
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-stone-900">My Students</h2>
+          <h2 className="text-2xl font-bold text-stone-900">{activeTab === 'students' ? 'My Students' : 'Messages'}</h2>
           <p className="text-stone-500 mt-1">{students.length} student{students.length !== 1 ? 's' : ''} assigned</p>
         </div>
+
+        {/* Tab bar */}
+        <div className="flex gap-1 mb-6 bg-white rounded-2xl border border-stone-100 p-1 w-fit shadow-sm">
+          {[
+            { id: 'students', label: 'My Students' },
+            { id: 'messages', label: 'Messages', badge: conversations.filter(c => c.lastMsg.sender_id !== myProfileId && !c.lastMsg.read_at).length },
+          ].map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 ${activeTab === tab.id ? 'bg-teal-600 text-white shadow-sm' : 'text-stone-500 hover:text-stone-800'}`}>
+              {tab.label}
+              {tab.badge > 0 && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-600'}`}>{tab.badge}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* MESSAGES TAB */}
+        {activeTab === 'messages' && (
+          <div className="bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden">
+            {conversations.length === 0 ? (
+              <div className="p-10 text-center">
+                <p className="text-stone-400 text-sm">No messages yet.</p>
+                <p className="text-stone-300 text-xs mt-1">Open a student profile and click Messages to start a conversation.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-stone-50">
+                {conversations.map(({ student, lastMsg, profileId }) => {
+                  const isUnread = lastMsg.sender_id !== myProfileId && !lastMsg.read_at
+                  return (
+                    <div key={profileId}
+                      onClick={() => router.push(`/dashboard/advisor/student/${student.id}?tab=messages`)}
+                      className="px-6 py-4 flex items-center gap-4 hover:bg-stone-50 cursor-pointer transition-colors">
+                      <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-teal-700 text-sm font-semibold">
+                          {student?.profiles?.full_name?.split(' ').map(n=>n[0]).join('').slice(0,2)}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={`text-sm font-medium ${isUnread ? 'text-stone-900' : 'text-stone-700'}`}>{student?.profiles?.full_name}</p>
+                          {isUnread && <span className="w-2 h-2 bg-teal-500 rounded-full flex-shrink-0" />}
+                        </div>
+                        <p className="text-xs text-stone-400 truncate mt-0.5">
+                          {lastMsg.sender_id === myProfileId ? 'You: ' : ''}{lastMsg.content}
+                        </p>
+                      </div>
+                      <p className="text-xs text-stone-400 flex-shrink-0">
+                        {new Date(lastMsg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'students' && (<>
 
         {/* Attention alert */}
         {attentionCount > 0 && (
@@ -226,6 +314,7 @@ export default function AdvisorDashboard() {
         {filtered.length > 0 && filtered.length < students.length && (
           <p className="text-xs text-stone-400 mt-3">Showing {filtered.length} of {students.length} students</p>
         )}
+        </>) /* end students tab */}
       </div>
     </div>
   )

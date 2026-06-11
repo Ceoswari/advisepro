@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { calculateCompetitiveness, TIER_LABELS, NRMP_BENCHMARKS } from '@/lib/scoring'
@@ -201,12 +201,19 @@ export default function StudentDashboard() {
   const [profile, setProfile] = useState(null)
   const [student, setStudent] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('overview')
   const [milestones, setMilestones] = useState([])
   const [openYears, setOpenYears] = useState({})
   const [activitiesCount, setActivitiesCount] = useState(0)
   const [publications, setPublications] = useState([])
   const [rotationsCount, setRotationsCount] = useState(0)
   const [advisingNotes, setAdvisingNotes] = useState([])
+  const [advisorProfile, setAdvisorProfile] = useState(null)
+  const [messages, setMessages] = useState([])
+  const [newMessage, setNewMessage] = useState('')
+  const [sendingMsg, setSendingMsg] = useState(false)
+  const [myProfileId, setMyProfileId] = useState(null)
+  const msgEndRef = useRef(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -263,6 +270,32 @@ export default function StudentDashboard() {
         setAdvisingNotes(notesData || [])
       }
 
+      // Fetch advisor info for messaging
+      if (studentData?.id) {
+        const { data: assignment } = await supabase
+          .from('advisor_student')
+          .select('advisor_profile_id')
+          .eq('student_id', studentData.id)
+          .single()
+        if (assignment?.advisor_profile_id) {
+          const { data: advProfile } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('id', assignment.advisor_profile_id)
+            .single()
+          setAdvisorProfile(advProfile)
+
+          // Fetch conversation
+          const [{ data: sent }, { data: received }] = await Promise.all([
+            supabase.from('messages').select('*').eq('sender_id', user.id).eq('recipient_id', assignment.advisor_profile_id).order('created_at'),
+            supabase.from('messages').select('*').eq('sender_id', assignment.advisor_profile_id).eq('recipient_id', user.id).order('created_at'),
+          ])
+          const thread = [...(sent || []), ...(received || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+          setMessages(thread)
+        }
+      }
+
+      setMyProfileId(user.id)
       setProfile(profileData)
       setStudent(studentData)
       setLoading(false)
@@ -272,6 +305,21 @@ export default function StudentDashboard() {
 
   const competitivenessResult = calculateCompetitiveness(student, activitiesCount, publications, rotationsCount)
   const initials = profile?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !advisorProfile || sendingMsg) return
+    setSendingMsg(true)
+    const { data, error } = await supabase.from('messages').insert({
+      sender_id: myProfileId,
+      recipient_id: advisorProfile.id,
+      content: newMessage.trim(),
+    }).select().single()
+    if (!error && data) {
+      setMessages(prev => [...prev, data])
+      setNewMessage('')
+    }
+    setSendingMsg(false)
+  }
 
   if (loading) return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center">
@@ -307,10 +355,30 @@ export default function StudentDashboard() {
 
       <div className="max-w-5xl mx-auto px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h2 className="text-2xl font-bold text-stone-900">Welcome back, {profile?.full_name?.split(' ')[0]} 👋</h2>
           <p className="text-stone-500 mt-1">{student?.class_year} · {student?.specialty_interest ?? 'No specialty selected'}</p>
         </div>
+
+        {/* Tab bar */}
+        <div className="flex gap-1 mb-6 bg-white rounded-2xl border border-stone-100 p-1 w-fit shadow-sm">
+          {[
+            { id: 'overview', label: 'Overview' },
+            { id: 'milestones', label: 'Milestones', badge: milestones.filter(m => m.status !== 'completed').length },
+            { id: 'messages', label: 'Messages', badge: advisorProfile ? messages.filter(m => m.sender_id !== myProfileId && !m.read_at).length : 0 },
+          ].map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 ${activeTab === tab.id ? 'bg-teal-600 text-white shadow-sm' : 'text-stone-500 hover:text-stone-800'}`}>
+              {tab.label}
+              {tab.badge > 0 && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-500'}`}>{tab.badge}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* ===== OVERVIEW TAB ===== */}
+        {activeTab === 'overview' && <>
 
         {/* USMLE + Research stat cards */}
         <div className="grid grid-cols-3 gap-4 mb-4">
@@ -410,6 +478,10 @@ export default function StudentDashboard() {
           )}
         </div>
 
+        </> /* end overview tab */}
+
+        {/* ===== MILESTONES TAB ===== */}
+        {activeTab === 'milestones' && <>
         {/* Milestones — year-based accordion */}
         {(() => {
           const totalCompleted = milestones.filter(m => m.status === 'completed').length
@@ -560,6 +632,65 @@ export default function StudentDashboard() {
             </div>
           )
         })()}
+        </> /* end milestones tab */}
+
+        {/* ===== MESSAGES TAB ===== */}
+        {activeTab === 'messages' && (
+          <div className="bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden flex flex-col" style={{ height: '520px' }}>
+            <div className="px-6 py-4 border-b border-stone-100 flex items-center gap-3">
+              {advisorProfile ? (
+                <>
+                  <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-teal-700 text-xs font-semibold">{advisorProfile.full_name?.split(' ').map(n=>n[0]).join('').slice(0,2)}</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-stone-900">{advisorProfile.full_name}</p>
+                    <p className="text-xs text-stone-400">Your advisor</p>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-stone-400">No advisor assigned yet. An advisor will be assigned to you by the program.</p>
+              )}
+            </div>
+            {advisorProfile && (
+              <>
+                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+                  {messages.length === 0 && (
+                    <p className="text-sm text-stone-400 text-center mt-8">No messages yet. Say hello to your advisor!</p>
+                  )}
+                  {messages.map(msg => {
+                    const isMe = msg.sender_id === myProfileId
+                    return (
+                      <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-xs lg:max-w-md px-4 py-2.5 rounded-2xl text-sm ${isMe ? 'bg-teal-600 text-white rounded-tr-sm' : 'bg-stone-100 text-stone-900 rounded-tl-sm'}`}>
+                          <p>{msg.content}</p>
+                          <p className={`text-xs mt-1 ${isMe ? 'text-teal-200' : 'text-stone-400'}`}>
+                            {new Date(msg.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <div ref={el => { if (el) el.scrollIntoView({ behavior: 'smooth' }) }} />
+                </div>
+                <div className="px-4 py-3 border-t border-stone-100 flex gap-2">
+                  <input
+                    value={newMessage}
+                    onChange={e => setNewMessage(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                    placeholder="Message your advisor..."
+                    className="flex-1 border border-stone-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                  <button onClick={sendMessage} disabled={sendingMsg || !newMessage.trim()}
+                    className="bg-teal-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-teal-700 disabled:opacity-40 transition-colors">
+                    Send
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   )

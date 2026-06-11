@@ -272,11 +272,12 @@ export default function StudentDashboard() {
 
       // Fetch advisor info for messaging
       if (studentData?.id) {
-        const { data: assignment } = await supabase
+        const { data: assignments } = await supabase
           .from('advisor_student')
           .select('advisor_profile_id')
           .eq('student_id', studentData.id)
-          .single()
+          .limit(1)
+        const assignment = assignments?.[0]
         if (assignment?.advisor_profile_id) {
           const { data: advProfile } = await supabase
             .from('profiles')

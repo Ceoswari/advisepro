@@ -110,7 +110,7 @@ function BenchmarkCard({ student }) {
 function CompetitivenessCard({ result, student }) {
   if (!result) return null
 
-  const { score, riskLevel, breakdown, tier, thresholds } = result
+  const { score, riskLevel, breakdown, tier, thresholds, matchRate } = result
 
   const riskColors = {
     low:    { bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700',  badge: 'bg-green-100 text-green-700',  bar: 'bg-green-500'  },
@@ -123,7 +123,7 @@ function CompetitivenessCard({ result, student }) {
     if (item.binary) {
       return (
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-600 w-44 flex-shrink-0">{item.label}</span>
+          <span className="text-xs text-gray-600 w-44 flex-shrink-0">{item.label}</span>
           <div className="flex-1">
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${item.score > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
               {item.score > 0 ? `✓ Yes — +${item.score} pts` : 'None yet'}
@@ -133,18 +133,31 @@ function CompetitivenessCard({ result, student }) {
         </div>
       )
     }
-    const barWidth = item.uncapped
-      ? Math.min((item.score / item.displayMax) * 100, 100)
-      : (item.score / item.max) * 100
+    const barWidth = (item.score / item.max) * 100
+    // Show benchmark tooltip if available
+    const hasBenchmark = item.benchmarkMatched != null
+    const benchmarkPct = hasBenchmark ? Math.min((item.benchmarkMatched / item.max) * 100, 100) : null
+
     return (
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-600 w-44 flex-shrink-0">{item.label}</span>
-        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-          <div className="h-full bg-blue-400 rounded-full transition-all" style={{ width: `${barWidth}%` }} />
+        <span className="text-xs text-gray-600 w-44 flex-shrink-0">{item.label}</span>
+        <div className="flex-1 relative h-2 bg-gray-100 rounded-full overflow-visible">
+          <div className="h-full bg-blue-400 rounded-full transition-all" style={{ width: `${Math.min(barWidth, 100)}%` }} />
+          {/* Benchmark marker — shows where matched applicants avg */}
+          {hasBenchmark && benchmarkPct !== null && (
+            <div
+              className="absolute top-[-3px] w-0.5 h-3.5 bg-orange-400 rounded-full"
+              style={{ left: `${Math.min(benchmarkPct, 98)}%` }}
+              title={`Matched avg: ${item.benchmarkMatched}`}
+            />
+          )}
         </div>
-        <span className="text-xs text-gray-500 w-16 text-right flex-shrink-0">
-          {item.uncapped ? `+${item.score} pts` : `${item.score} / ${item.max}`}
-        </span>
+        <div className="text-right flex-shrink-0 w-20">
+          <span className="text-xs text-gray-500">{item.score} / {item.max}</span>
+          {hasBenchmark && (
+            <p className="text-xs text-orange-500">avg: {item.benchmarkMatched}</p>
+          )}
+        </div>
       </div>
     )
   }
@@ -161,7 +174,7 @@ function CompetitivenessCard({ result, student }) {
           {student?.specialty_interest && (
             <p className="text-xs mt-1.5 font-medium" style={{ color: riskLevel === 'low' ? '#15803d' : riskLevel === 'medium' ? '#a16207' : '#b91c1c' }}>
               {riskLevel === 'low'
-                ? `✓ Meets Low Risk threshold for ${student.specialty_interest} (${thresholds.low}+)`
+                ? `✓ On track for ${student.specialty_interest} (need ${thresholds.low}+)`
                 : `${thresholds.low - score} point${thresholds.low - score === 1 ? '' : 's'} away from Low Risk in ${student.specialty_interest} (need ${thresholds.low})`
               }
             </p>
@@ -174,18 +187,17 @@ function CompetitivenessCard({ result, student }) {
           {student?.specialty_interest && tier && (
             <p className="text-xs text-gray-400 mt-1">{TIER_LABELS[tier] || ''} specialty</p>
           )}
+          {matchRate != null && (
+            <p className="text-xs text-gray-400 mt-0.5">{matchRate}% national match rate</p>
+          )}
         </div>
       </div>
 
       {/* Overall progress bar */}
       <div className="h-3 bg-white rounded-full overflow-hidden mb-1 border border-gray-200">
-        <div
-          className={`h-full ${c.bar} rounded-full transition-all`}
-          style={{ width: `${score}%` }}
-        />
+        <div className={`h-full ${c.bar} rounded-full transition-all`} style={{ width: `${score}%` }} />
       </div>
-      {/* Threshold markers */}
-      <div className="relative h-3 mb-4">
+      <div className="relative h-4 mb-4">
         <div className="absolute text-xs text-gray-400" style={{ left: `${thresholds.medium}%`, transform: 'translateX(-50%)' }}>
           ↑ {thresholds.medium}
         </div>
@@ -195,15 +207,20 @@ function CompetitivenessCard({ result, student }) {
       </div>
 
       {/* Breakdown */}
-      <div className="space-y-2.5 pt-3 border-t border-white border-opacity-60">
+      <div className="space-y-3 pt-3 border-t border-white border-opacity-60">
         {Object.values(breakdown).map(item => (
           <BreakdownRow key={item.label} item={item} />
         ))}
       </div>
 
-      <p className="text-xs text-gray-400 mt-3">
-        Score updates when you save your profile. Thresholds adjusted for your specialty.
-      </p>
+      <div className="flex items-center gap-4 mt-3 pt-2 border-t border-white border-opacity-50">
+        <p className="text-xs text-gray-400 flex-1">Score based on 2024 NRMP Charting Outcomes data. Updates when you save your profile.</p>
+        {result.benchmark && (
+          <span className="text-xs text-orange-400 flex-shrink-0 flex items-center gap-1">
+            <span className="w-1.5 h-3 bg-orange-400 inline-block rounded-full"></span> = matched avg
+          </span>
+        )}
+      </div>
     </div>
   )
 }

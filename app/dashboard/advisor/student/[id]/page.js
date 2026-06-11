@@ -82,16 +82,34 @@ export default function StudentDetail() {
     setLoadingDocs(true)
     const allFiles = []
     for (const type of DOC_TYPES) {
-      const { data } = await supabase.storage
-        .from('documents')
-        .list(`${sProfileId}/${type.value}`, { sortBy: { column: 'created_at', order: 'desc' } })
-      if (data) {
-        data.forEach(f => allFiles.push({ ...f, docType: type.value, docLabel: type.label, path: `${sProfileId}/${type.value}/${f.name}` }))
+      const res = await fetch('/api/documents/list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: `${sProfileId}/${type.value}` }),
+      })
+      const { files } = await res.json()
+      if (files) {
+        files.forEach(f => allFiles.push({ ...f, docType: type.value, docLabel: type.label, path: `${sProfileId}/${type.value}/${f.name}` }))
       }
     }
     setDocs(allFiles)
     setLoadingDocs(false)
   }
+
+  // Real-time: receive new messages from student
+  useEffect(() => {
+    if (!myProfileId || !studentProfileId) return
+    const channel = supabase
+      .channel(`advisor-msgs-${myProfileId}-${studentProfileId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `recipient_id=eq.${myProfileId}` },
+        (payload) => {
+          if (payload.new.sender_id === studentProfileId) {
+            setMessages(prev => [...prev, payload.new])
+          }
+        })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [myProfileId, studentProfileId])
 
   const handleTabChange = (tab) => {
     setActiveTab(tab)

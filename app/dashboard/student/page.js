@@ -306,6 +306,21 @@ export default function StudentDashboard() {
   const competitivenessResult = calculateCompetitiveness(student, activitiesCount, publications, rotationsCount)
   const initials = profile?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 
+  // Real-time: receive new messages from advisor
+  useEffect(() => {
+    if (!myProfileId || !advisorProfile) return
+    const channel = supabase
+      .channel(`student-msgs-${myProfileId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `recipient_id=eq.${myProfileId}` },
+        (payload) => {
+          if (payload.new.sender_id === advisorProfile.id) {
+            setMessages(prev => [...prev, payload.new])
+          }
+        })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [myProfileId, advisorProfile])
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !advisorProfile || sendingMsg) return
     setSendingMsg(true)

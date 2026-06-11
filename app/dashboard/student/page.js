@@ -3,54 +3,57 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { calculateCompetitiveness, TIER_LABELS } from '@/lib/scoring'
+import { calculateCompetitiveness, TIER_LABELS, NRMP_BENCHMARKS } from '@/lib/scoring'
 
 function BenchmarkCard({ student }) {
-  const [benchmark, setBenchmark] = useState(null)
+  const b = NRMP_BENCHMARKS[student?.specialty_interest]
 
-  useEffect(() => {
-    if (!student?.specialty_interest) return
-    const fetchBenchmark = async () => {
-      const { data } = await supabase
-        .from('benchmarks')
-        .select('*')
-        .eq('specialty', student.specialty_interest)
-        .single()
-      setBenchmark(data)
-    }
-    fetchBenchmark()
-  }, [student])
+  const ScoreBar = ({ label, score, matchedMean, unmatchedMean }) => {
+    if (!matchedMean) return null
+    const lo = Math.min(unmatchedMean ?? matchedMean - 20, matchedMean) - 15
+    const hi = matchedMean + 20
+    const range = hi - lo
+    const pct = v => Math.min(Math.max(((v - lo) / range) * 100, 1), 99)
 
-  const ScoreBar = ({ label, score, mean, p25, p75 }) => {
-    if (!mean) return null
-    const min = p25 - 30
-    const max = p75 + 30
-    const range = max - min
-    const meanPos = ((mean - min) / range) * 100
-    const p25Pos = ((p25 - min) / range) * 100
-    const p75Pos = ((p75 - min) / range) * 100
-    const scorePos = score ? ((score - min) / range) * 100 : null
+    const above = score != null && score >= matchedMean
+    const between = score != null && unmatchedMean != null && score >= unmatchedMean && score < matchedMean
+    const below = score != null && unmatchedMean != null && score < unmatchedMean
 
     return (
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-1.5">
-          <p className="text-sm text-stone-600">{label}</p>
-          <div className="flex gap-3 text-xs text-stone-500">
-            <span>Your score: <span className="font-semibold text-stone-900">{score ?? '—'}</span></span>
-            <span>Mean: <span className="font-semibold text-stone-900">{mean}</span></span>
+      <div className="mb-5">
+        <div className="flex justify-between items-center mb-2">
+          <p className="text-sm font-medium text-stone-700">{label}</p>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="text-stone-500">Your score: <span className="font-bold text-stone-900">{score ?? '—'}</span></span>
+            {above  && <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Above matched avg ✓</span>}
+            {between && <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Below matched avg</span>}
+            {below  && <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-medium">Below unmatched avg</span>}
           </div>
         </div>
-        <div className="relative h-6 bg-stone-100 rounded-full overflow-hidden">
-          <div className="absolute h-full bg-teal-100 rounded-full" style={{ left: `${p25Pos}%`, width: `${p75Pos - p25Pos}%` }} />
-          <div className="absolute w-0.5 h-full bg-teal-400" style={{ left: `${meanPos}%` }} />
-          {scorePos !== null && (
-            <div className="absolute w-3 h-3 rounded-full bg-emerald-500 border-2 border-white top-1.5"
-              style={{ left: `${Math.min(Math.max(scorePos, 2), 95)}%` }} />
+        <div className="relative h-5 bg-stone-100 rounded-full">
+          {/* Shaded zone between unmatched and matched means */}
+          {unmatchedMean && (
+            <div className="absolute h-full bg-amber-100 rounded-full"
+              style={{ left: `${pct(unmatchedMean)}%`, width: `${pct(matchedMean) - pct(unmatchedMean)}%` }} />
+          )}
+          {/* Unmatched mean marker */}
+          {unmatchedMean && (
+            <div className="absolute w-0.5 h-full bg-rose-300 rounded-full" style={{ left: `${pct(unmatchedMean)}%` }}
+              title={`Unmatched avg: ${unmatchedMean}`} />
+          )}
+          {/* Matched mean marker */}
+          <div className="absolute w-0.5 h-full bg-emerald-500 rounded-full" style={{ left: `${pct(matchedMean)}%` }}
+            title={`Matched avg: ${matchedMean}`} />
+          {/* Student score dot */}
+          {score != null && (
+            <div className={`absolute w-3.5 h-3.5 rounded-full border-2 border-white top-[3px] shadow-sm ${
+              above ? 'bg-emerald-500' : between ? 'bg-amber-400' : 'bg-rose-500'}`}
+              style={{ left: `${pct(score)}%`, transform: 'translateX(-50%)' }} />
           )}
         </div>
-        <div className="flex justify-between text-xs text-stone-400 mt-1">
-          <span>25th: {p25}</span>
-          <span>75th: {p75}</span>
+        <div className="flex justify-between text-xs text-stone-400 mt-1.5">
+          {unmatchedMean ? <span className="text-rose-400">Unmatched avg: {unmatchedMean}</span> : <span />}
+          <span className="text-emerald-600">Matched avg: {matchedMean}</span>
         </div>
       </div>
     )
@@ -58,25 +61,23 @@ function BenchmarkCard({ student }) {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6">
-      <div className="flex justify-between items-start mb-4">
+      <div className="flex justify-between items-start mb-5">
         <div>
           <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-1">Specialty Benchmark</h3>
           <p className="text-lg font-semibold text-stone-900">{student?.specialty_interest}</p>
         </div>
-        {benchmark && <span className="text-xs text-stone-400">{benchmark.source} {benchmark.data_year}</span>}
+        <span className="text-xs text-stone-400">NRMP 2024 · MD Seniors</span>
       </div>
-      {!benchmark ? (
+      {!b ? (
         <p className="text-sm text-stone-400">No benchmark data available for this specialty.</p>
       ) : (
         <>
-          <ScoreBar label="USMLE Step 1" score={student?.usmle_step1_score} mean={benchmark.step1_mean} p25={benchmark.step1_25th} p75={benchmark.step1_75th} />
-          <ScoreBar label="USMLE Step 2" score={student?.usmle_step2_score} mean={benchmark.step2_mean} p25={benchmark.step2_25th} p75={benchmark.step2_75th} />
-          <div className="mt-3 pt-3 border-t border-stone-100">
-            <div className="flex gap-4 text-xs text-stone-500">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Your score</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-1 bg-teal-400 inline-block"></span> National mean</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 bg-teal-100 inline-block rounded"></span> 25th–75th percentile</span>
-            </div>
+          <ScoreBar label="USMLE Step 1" score={student?.usmle_step1_score} matchedMean={b.step1M} unmatchedMean={b.step1U} />
+          <ScoreBar label="USMLE Step 2 CK" score={student?.usmle_step2_score} matchedMean={b.step2M} unmatchedMean={b.step2U} />
+          <div className="mt-2 pt-3 border-t border-stone-100 flex gap-5 text-xs text-stone-400">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> Your score (above avg)</span>
+            <span className="flex items-center gap-1.5"><span className="w-0.5 h-3 bg-emerald-500 inline-block rounded-full" /> Matched avg</span>
+            <span className="flex items-center gap-1.5"><span className="w-0.5 h-3 bg-rose-300 inline-block rounded-full" /> Unmatched avg</span>
           </div>
         </>
       )}
@@ -208,10 +209,13 @@ export default function StudentDashboard() {
 
       if (studentData) {
         // Auto-assign any missing specialty + universal milestones on every dashboard load
-        const { data: allMilestones } = await supabase
-          .from('milestones')
-          .select('id, specialty')
-          .or(`specialty.is.null,specialty.eq.${studentData.specialty_interest || '__none__'}`)
+        const [{ data: universalMs }, { data: specialtyMs }] = await Promise.all([
+          supabase.from('milestones').select('id, specialty').is('specialty', null),
+          studentData.specialty_interest
+            ? supabase.from('milestones').select('id, specialty').eq('specialty', studentData.specialty_interest)
+            : Promise.resolve({ data: [] }),
+        ])
+        const allMilestones = [...(universalMs || []), ...(specialtyMs || [])]
 
         if (allMilestones?.length > 0) {
           const { data: assigned } = await supabase

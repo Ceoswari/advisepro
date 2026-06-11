@@ -24,15 +24,25 @@ export default function LoginPage() {
       return
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', data.user.id)
       .single()
 
-    if (profile?.role === 'student') router.push('/dashboard/student')
-    else if (profile?.role === 'advisor') router.push('/dashboard/advisor')
-    else if (profile?.role === 'admin') router.push('/dashboard/admin')
+    if (profileError || !profile?.role) {
+      setError('Account not set up yet. Contact your administrator.')
+      setLoading(false)
+      return
+    }
+
+    if (profile.role === 'student') router.push('/dashboard/student')
+    else if (profile.role === 'advisor') router.push('/dashboard/advisor')
+    else if (profile.role === 'admin') router.push('/dashboard/admin')
+    else {
+      setError(`Unknown role: ${profile.role}. Contact your administrator.`)
+      setLoading(false)
+    }
   }
 
   return (

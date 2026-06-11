@@ -6,11 +6,11 @@ export default function DashboardNav({ backHref, backLabel = '← Back', navItem
   const router = useRouter()
   const pathname = usePathname()
 
-  const homeHref = pathname.includes('/student')
-    ? '/dashboard/student'
-    : pathname.includes('/advisor')
+  const homeHref = pathname.startsWith('/dashboard/advisor')
     ? '/dashboard/advisor'
-    : '/dashboard/admin'
+    : pathname.startsWith('/dashboard/admin')
+    ? '/dashboard/admin'
+    : '/dashboard/student'
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()

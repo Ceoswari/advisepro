@@ -199,8 +199,23 @@ export default function StudentDetail() {
 
         {/* Score summary bar */}
         <div className="grid grid-cols-4 gap-3 mb-6">
+          {/* Step 1 — special card with pass/fail badge and attempts */}
+          <div className="bg-white rounded-2xl border border-stone-100 p-4">
+            <p className="text-xs text-stone-400 uppercase tracking-wide">Step 1</p>
+            <span className={`inline-block text-xs font-semibold mt-1.5 px-2.5 py-1 rounded-full ${
+              student?.usmle_step1_status === 'pass' ? 'bg-emerald-100 text-emerald-700' :
+              student?.usmle_step1_status === 'fail' ? 'bg-rose-100 text-rose-700' :
+              'bg-stone-100 text-stone-400'
+            }`}>
+              {student?.usmle_step1_status === 'pass' ? 'Pass' : student?.usmle_step1_status === 'fail' ? 'Did not pass' : 'Not taken'}
+            </span>
+            {student?.usmle_step1_attempts != null && (
+              <p className="text-xs text-stone-400 mt-1">
+                {student.usmle_step1_attempts === 1 ? '1st attempt' : `${student.usmle_step1_attempts} attempts`}
+              </p>
+            )}
+          </div>
           {[
-            { label: 'Step 1', value: student?.usmle_step1_score ?? '—' },
             { label: 'Step 2', value: student?.usmle_step2_score ?? '—' },
             { label: 'Research', value: student?.research_count ?? '—' },
             { label: 'Risk', value: student?.risk_level ?? '—', color: student?.risk_level === 'low' ? 'text-emerald-600' : student?.risk_level === 'medium' ? 'text-amber-500' : 'text-rose-600' },

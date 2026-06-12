@@ -224,10 +224,18 @@ export default function AdminStudentDetail() {
         <div className="grid grid-cols-4 gap-4 mb-4">
           <div className="bg-white rounded-2xl border border-stone-200 p-4">
             <p className="text-xs text-stone-500">Step 1</p>
-            <p className="text-2xl font-bold text-stone-900">{student?.usmle_step1_score ?? '—'}</p>
-            <span className={`text-xs ${student?.usmle_step1_status === 'pass' ? 'text-emerald-600' : student?.usmle_step1_status === 'fail' ? 'text-rose-600' : 'text-stone-400'}`}>
-              {student?.usmle_step1_status === 'pass' ? 'Pass' : student?.usmle_step1_status === 'fail' ? 'Fail' : 'Not taken'}
+            <span className={`inline-block text-sm font-semibold px-2.5 py-1 rounded-full mt-1 ${
+              student?.usmle_step1_status === 'pass' ? 'bg-emerald-100 text-emerald-700' :
+              student?.usmle_step1_status === 'fail' ? 'bg-rose-100 text-rose-700' :
+              'bg-stone-100 text-stone-400'
+            }`}>
+              {student?.usmle_step1_status === 'pass' ? 'Pass' : student?.usmle_step1_status === 'fail' ? 'Did not pass' : 'Not taken'}
             </span>
+            {student?.usmle_step1_attempts != null && (
+              <p className="text-xs text-stone-400 mt-1">
+                {student.usmle_step1_attempts === 1 ? '1st attempt' : `${student.usmle_step1_attempts} attempts`}
+              </p>
+            )}
           </div>
           <div className="bg-white rounded-2xl border border-stone-200 p-4">
             <p className="text-xs text-stone-500">Step 2</p>

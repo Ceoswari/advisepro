@@ -619,13 +619,17 @@ export default function StudentDashboard() {
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-5">
               <p className="text-xs font-medium text-stone-400 uppercase tracking-wide">USMLE Step 1</p>
-              <p className="text-3xl font-bold text-stone-900 mt-2">{student?.usmle_step1_score ?? '—'}</p>
-              <span className={`text-xs font-medium mt-1.5 inline-block px-2 py-0.5 rounded-full ${
+              <span className={`text-xs font-medium mt-2 inline-block px-2 py-0.5 rounded-full ${
                 student?.usmle_step1_status === 'pass' ? 'bg-emerald-100 text-emerald-700' :
                 student?.usmle_step1_status === 'fail' ? 'bg-rose-100 text-rose-700' :
                 'bg-stone-100 text-stone-400'}`}>
-                {student?.usmle_step1_status === 'pass' ? 'Pass' : student?.usmle_step1_status === 'fail' ? 'Fail' : 'Not taken'}
+                {student?.usmle_step1_status === 'pass' ? 'Pass' : student?.usmle_step1_status === 'fail' ? 'Did not pass' : 'Not taken'}
               </span>
+              {student?.usmle_step1_attempts != null && (
+                <p className="text-xs text-stone-400 mt-1.5">
+                  {student.usmle_step1_attempts === 1 ? '1st attempt' : `${student.usmle_step1_attempts} attempts`}
+                </p>
+              )}
             </div>
             <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-5">
               <p className="text-xs font-medium text-stone-400 uppercase tracking-wide">USMLE Step 2 CK</p>

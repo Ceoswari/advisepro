@@ -4,6 +4,25 @@ A running log of features, fixes, and improvements shipped to AdvisePro.
 
 ---
 
+## June 12, 2026 (continued — Step 1 import)
+
+### USMLE Step 1 Results Import
+- New import type in the Import Data hub: **USMLE Step 1 Results** (from NBME class export)
+- Admins upload the CSV class summary from NBME — matched by first and last name (NBME exports do not include Banner ID or email)
+- Match logic:
+  - Exact name match (case-insensitive) → imported
+  - Same name found on multiple students → flagged as ambiguous, skipped (requires manual entry via admin edit page)
+  - Name not found in AdvisePro → skipped
+- Outcome logic from the two attempt columns:
+  - First attempt Pass → Pass, 1 attempt
+  - First attempt Unsuccessful + Second attempt Pass → Pass, 2 attempts
+  - First attempt Unsuccessful + Second attempt Unsuccessful → Did not pass, 2 attempts
+  - First attempt Unsuccessful, no second attempt recorded → Did not pass, 1 attempt so far
+- Step 1 attempt count now stored and displayed on student, advisor, and admin views
+- `step1_migration.sql` — run in Supabase SQL Editor before using (adds `usmle_step1_attempts` column)
+
+---
+
 ## June 12, 2026 (continued — data import)
 
 ### Banner ID

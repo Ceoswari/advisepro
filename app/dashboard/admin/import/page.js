@@ -15,12 +15,12 @@ const IMPORT_TYPES = [
   },
   {
     id: 'step_scores',
-    title: 'USMLE Step Scores',
-    source: 'NBME / Prometric',
-    description: 'Upload Step 1 and Step 2 CK score reports. Coming once the file format is confirmed.',
+    title: 'USMLE Step 1 Results',
+    source: 'NBME',
+    description: 'Upload the NBME class Step 1 results CSV. Students are matched by first and last name. Records pass/fail status and number of attempts.',
     icon: '🩺',
-    href: null,
-    available: false,
+    href: '/dashboard/admin/import/step1',
+    available: true,
   },
   {
     id: 'shelf_exams',

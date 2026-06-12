@@ -1,0 +1,14 @@
+StudentID,Email,LastName,FirstName,ClassYear,DisplayBlock,AcademicYear,AcademicTerm,CourseID,CourseSection,Course Grade,Course Points,Course Percent,Practical Exam 1,Practical Exam 2,Written Final
+Class Avg,,,,,,,,,,,,,82.8,81.5,84.2
+Points Possible,,,,,,,,,,,,,100,100,100
+Threshold,,,,,,,,,,,,,70,70,75
+916270001,mia.garcia@rowan.edu,Garcia,Mia,MS1,,AY23-24,Fall,BMED002,001,High Pass,,92.8,92.0,91.5,94.2
+916270002,aiden.rodriguez@rowan.edu,Rodriguez,Aiden,MS1,,AY23-24,Fall,BMED002,001,Pass,,80.5,79.8,79.0,82.1
+916270003,charlotte.lee@rowan.edu,Lee,Charlotte,MS1,,AY23-24,Fall,BMED002,001,High Pass,,90.1,89.5,88.8,91.8
+916270004,elijah.hernandez@rowan.edu,Hernandez,Elijah,MS1,,AY23-24,Fall,BMED002,001,Pass,,77.8,77.0,76.5,79.2
+916270005,harper.lopez@rowan.edu,Lopez,Harper,MS1,,AY23-24,Fall,BMED002,001,Pass,,83.5,82.8,82.0,85.0
+916270006,james.kim@rowan.edu,Kim,James,MS1,,AY23-24,Fall,BMED002,001,Pass,,77.2,76.5,75.8,78.8
+916270007,amelia.white@rowan.edu,White,Amelia,MS1,,AY23-24,Fall,BMED002,001,High Pass,,90.8,90.2,89.5,92.2
+916270008,benjamin.harris@rowan.edu,Harris,Benjamin,MS1,,AY23-24,Fall,BMED002,001,Pass,,75.9,75.2,74.5,77.2
+916270009,evelyn.clark@rowan.edu,Clark,Evelyn,MS1,,AY23-24,Fall,BMED002,001,Pass,,84.2,83.5,82.8,85.9
+916270010,logan.lewis@rowan.edu,Lewis,Logan,MS1,,AY23-24,Fall,BMED002,001,Pass,,79.8,79.0,78.5,81.2

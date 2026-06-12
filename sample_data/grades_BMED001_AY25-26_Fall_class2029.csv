@@ -1,0 +1,14 @@
+StudentID,Email,LastName,FirstName,ClassYear,DisplayBlock,AcademicYear,AcademicTerm,CourseID,CourseSection,Course Grade,Course Points,Course Percent,Exam 1,Exam 2,Final Exam
+Class Avg,,,,,,,,,,,,,82.6,81.4,84.6
+Points Possible,,,,,,,,,,,,,100,100,100
+Threshold,,,,,,,,,,,,,70,70,75
+916290001,lily.perez@rowan.edu,Perez,Lily,MS1,,AY25-26,Fall,BMED001,001,Pass,,84.2,85.0,82.3,84.1
+916290002,jayden.roberts@rowan.edu,Roberts,Jayden,MS1,,AY25-26,Fall,BMED001,001,Pass,,78.5,78.0,76.2,80.1
+916290003,zoey.turner@rowan.edu,Turner,Zoey,MS1,,AY25-26,Fall,BMED001,001,High Pass,,92.3,91.5,90.8,93.8
+916290004,marcus.phillips@rowan.edu,Phillips,Marcus,MS1,,AY25-26,Fall,BMED001,001,Pass,,81.6,82.0,79.5,82.3
+916290005,nora.campbell@rowan.edu,Campbell,Nora,MS1,,AY25-26,Fall,BMED001,001,High Pass,,90.8,90.0,89.5,92.0
+916290006,isaiah.parker@rowan.edu,Parker,Isaiah,MS1,,AY25-26,Fall,BMED001,001,Pass,,76.4,75.0,74.8,78.2
+916290007,chloe.evans@rowan.edu,Evans,Chloe,MS1,,AY25-26,Fall,BMED001,001,Pass,,85.1,84.5,83.2,86.4
+916290008,owen.edwards@rowan.edu,Edwards,Owen,MS1,,AY25-26,Fall,BMED001,001,Pass,,79.8,78.5,78.0,82.1
+916290009,penelope.collins@rowan.edu,Collins,Penelope,MS1,,AY25-26,Fall,BMED001,001,Pass,,87.5,87.0,85.9,88.9
+916290010,wyatt.brooks@rowan.edu,Brooks,Wyatt,MS1,,AY25-26,Fall,BMED001,001,Pass,,75.9,74.5,74.2,78.3

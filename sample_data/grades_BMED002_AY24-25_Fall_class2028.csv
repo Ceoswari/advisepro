@@ -1,0 +1,14 @@
+StudentID,Email,LastName,FirstName,ClassYear,DisplayBlock,AcademicYear,AcademicTerm,CourseID,CourseSection,Course Grade,Course Points,Course Percent,Practical Exam 1,Practical Exam 2,Written Final
+Class Avg,,,,,,,,,,,,,81.2,80.1,82.8
+Points Possible,,,,,,,,,,,,,100,100,100
+Threshold,,,,,,,,,,,,,70,70,75
+916280001,abigail.walker@rowan.edu,Walker,Abigail,MS1,,AY24-25,Fall,BMED002,001,High Pass,,90.5,89.8,89.2,92.1
+916280002,sebastian.hall@rowan.edu,Hall,Sebastian,MS1,,AY24-25,Fall,BMED002,001,Pass,,78.5,77.8,77.0,80.2
+916280003,emily.young@rowan.edu,Young,Emily,MS1,,AY24-25,Fall,BMED002,001,Pass,,82.8,82.0,81.5,84.4
+916280004,daniel.torres@rowan.edu,Torres,Daniel,MS1,,AY24-25,Fall,BMED002,001,Pass,,76.2,75.5,74.8,77.8
+916280005,elizabeth.king@rowan.edu,King,Elizabeth,MS1,,AY24-25,Fall,BMED002,001,High Pass,,89.4,88.8,88.1,90.8
+916280006,jackson.wright@rowan.edu,Wright,Jackson,MS1,,AY24-25,Fall,BMED002,001,Pass,,75.8,75.0,74.2,77.5
+916280007,sofia.scott@rowan.edu,Scott,Sofia,MS1,,AY24-25,Fall,BMED002,001,Pass,,82.1,81.5,80.8,83.8
+916280008,carter.nguyen@rowan.edu,Nguyen,Carter,MS1,,AY24-25,Fall,BMED002,001,Pass,,80.8,80.0,79.5,82.1
+916280009,avery.hill@rowan.edu,Hill,Avery,MS1,,AY24-25,Fall,BMED002,001,Pass,,85.2,84.5,83.8,86.8
+916280010,ryan.mitchell@rowan.edu,Mitchell,Ryan,MS1,,AY24-25,Fall,BMED002,001,Pass,,77.6,76.8,76.2,79.0

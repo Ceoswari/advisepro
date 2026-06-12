@@ -12,6 +12,7 @@ export default function NewStudent() {
   const [form, setForm] = useState({
     full_name: '',
     email: '',
+    banner_id: '',
     class_year: 'MS1',
     specialty_interest: '',
     usmle_step1_score: '',
@@ -59,17 +60,24 @@ export default function NewStudent() {
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-stone-200 p-6 space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2">
               <label className="block text-sm font-medium text-stone-700 mb-1">Full Name</label>
               <input name="full_name" value={form.full_name} onChange={handleChange} required
                 className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Email</label>
-              <input name="email" type="email" value={form.email} onChange={handleChange} required
+              <label className="block text-sm font-medium text-stone-700 mb-1">Banner ID</label>
+              <input name="banner_id" value={form.banner_id} onChange={handleChange}
+                placeholder="e.g. 916405336"
                 className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Rowan Email</label>
+            <input name="email" type="email" value={form.email} onChange={handleChange} required
+              placeholder="student@rowan.edu"
+              className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

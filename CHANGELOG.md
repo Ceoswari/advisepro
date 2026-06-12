@@ -4,6 +4,34 @@ A running log of features, fixes, and improvements shipped to AdvisePro.
 
 ---
 
+## June 12, 2026 (continued — data import)
+
+### Banner ID
+- Added `banner_id` (Banner ID) field to all student records — primary identifier for CSV data imports
+- Banner ID now appears on the admin student edit page, the individual new student form, and the bulk import template
+- Bulk import template simplified to `full_name, email, banner_id, class_year, specialty_interest` — scores removed since those come from official imports
+- Banner ID validated as required during bulk import (rows missing it are flagged before upload)
+
+### Import Data Hub
+- New **Import Data** page in admin nav — central hub for all CSV data imports
+- Currently live: Progress IQ Course Grades
+- Coming soon placeholders: USMLE Step Scores, NBME Shelf Exams
+
+### Progress IQ Grade Import
+- Admins upload a grade export CSV from Progress IQ and AdvisePro matches each row to a student account
+- Match logic: Banner ID is the primary key; Rowan email is cross-checked as secondary verification
+  - Banner ID + email both match → imported (green)
+  - Banner ID found, email blank in CSV → imported with warning (amber — Progress IQ doesn't always export email)
+  - Banner ID found, email in CSV doesn't match → blocked (red — must resolve before importing)
+  - Banner ID not found → skipped (red — student account needs Banner ID set first)
+- Admin names the course (CourseID → human-readable name) at import time; name is remembered for future uploads
+- Handles Progress IQ's metadata rows (Class Avg, Points Possible, Threshold) automatically — only student rows are imported
+- Grade components (Exam 1, TBL 2, etc.) are dynamic — any course structure is supported
+- Class averages stored alongside individual grades for future comparison features
+- `grades_migration.sql` — run in Supabase SQL Editor before using (adds `banner_id`, creates `courses` and `course_grades` tables)
+
+---
+
 ## June 12, 2026 (continued — security)
 
 ### Session Timeout

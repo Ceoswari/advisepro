@@ -39,6 +39,7 @@ export async function POST(request) {
     .from('students')
     .insert({
       profile_id: authData.user.id,
+      banner_id: body.banner_id || null,
       class_year: body.class_year || null,
       specialty_interest: body.specialty_interest || null,
       usmle_step1_score: body.usmle_step1_score ? parseInt(body.usmle_step1_score) : null,

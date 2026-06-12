@@ -40,6 +40,7 @@ export default function AdminEditStudent() {
   const [studentName, setStudentName] = useState('')
   const [originalForm, setOriginalForm] = useState({})
   const [form, setForm] = useState({
+    banner_id: '',
     class_year: '',
     specialty_interest: '',
     usmle_step1_score: '',
@@ -64,6 +65,7 @@ export default function AdminEditStudent() {
       if (studentData) {
         setStudentName(studentData.profiles?.full_name || '')
         const loaded = {
+          banner_id: studentData.banner_id ?? '',
           class_year: studentData.class_year ?? '',
           specialty_interest: studentData.specialty_interest ?? '',
           usmle_step1_score: studentData.usmle_step1_score ?? '',
@@ -92,6 +94,7 @@ export default function AdminEditStudent() {
     setError('')
 
     const updatedStudent = {
+      banner_id: form.banner_id || null,
       class_year: form.class_year || null,
       specialty_interest: form.specialty_interest || null,
       usmle_step1_score: form.usmle_step1_score ? parseInt(form.usmle_step1_score) : null,
@@ -128,6 +131,7 @@ export default function AdminEditStudent() {
 
     // Write audit log — record each field that changed
     const AUDIT_LABELS = {
+      banner_id: 'Banner ID',
       class_year: 'Class Year',
       specialty_interest: 'Specialty Interest',
       usmle_step1_score: 'Step 1 Score',
@@ -191,6 +195,15 @@ export default function AdminEditStudent() {
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-stone-200 p-6 space-y-5">
+
+          {/* Banner ID */}
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Banner ID</label>
+            <p className="text-xs text-stone-400 mb-2">Required for CSV grade imports to match correctly.</p>
+            <input name="banner_id" value={form.banner_id} onChange={handleChange}
+              placeholder="e.g. 916405336"
+              className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+          </div>
 
           {/* Year + Specialty */}
           <div className="grid grid-cols-2 gap-4">

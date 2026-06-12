@@ -599,6 +599,7 @@ export default function StudentDashboard() {
           {[
             { id: 'overview',   label: 'Overview' },
             { id: 'milestones', label: 'Milestones', badge: pendingMilestones },
+            { id: 'grades',     label: 'Grades',     badge: grades.length },
             { id: 'messages',   label: 'Messages',   badge: unreadMessages },
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -697,11 +698,6 @@ export default function StudentDashboard() {
               {isMS4 && <ERASCountdownCard />}
             </div>
           )}
-
-          {/* Grades */}
-          <div className="mb-4">
-            <GradesCard grades={grades} />
-          </div>
 
           {/* LOR Tracker */}
           <div className="mb-4">
@@ -868,6 +864,11 @@ export default function StudentDashboard() {
             )
           })()}
         </>}
+
+        {/* ══════════════════ GRADES TAB ══════════════════ */}
+        {activeTab === 'grades' && (
+          <GradesCard grades={grades} />
+        )}
 
         {/* ══════════════════ MESSAGES TAB ══════════════════ */}
         {activeTab === 'messages' && (

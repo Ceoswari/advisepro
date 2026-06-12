@@ -179,9 +179,10 @@ export default function StudentDetail() {
   if (loading) return <div className="min-h-screen bg-stone-50 flex items-center justify-center text-stone-400 text-sm">Loading...</div>
 
   const tabs = [
-    { id: 'overview', label: 'Overview' },
+    { id: 'overview',  label: 'Overview' },
+    { id: 'grades',    label: 'Grades',    badge: grades.length },
     { id: 'documents', label: 'Documents' },
-    { id: 'messages', label: 'Messages', badge: messages.filter(m => m.sender_id !== myProfileId && !m.read_at).length },
+    { id: 'messages',  label: 'Messages',  badge: messages.filter(m => m.sender_id !== myProfileId && !m.read_at).length },
   ]
 
   return (
@@ -274,9 +275,6 @@ export default function StudentDetail() {
               )}
             </div>
 
-            {/* Grades */}
-            <GradesCard grades={grades} />
-
             {/* LOR summary */}
             {(() => {
               const confirmed = lors.filter(l => l.status === 'confirmed' || l.status === 'submitted').length
@@ -357,6 +355,11 @@ export default function StudentDetail() {
               )}
             </div>
           </div>
+        )}
+
+        {/* GRADES TAB */}
+        {activeTab === 'grades' && (
+          <GradesCard grades={grades} />
         )}
 
         {/* DOCUMENTS TAB */}

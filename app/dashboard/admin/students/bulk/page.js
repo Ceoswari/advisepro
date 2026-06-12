@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import DashboardNav from '@/app/components/DashboardNav'
 import { supabase } from '@/lib/supabase'
@@ -25,9 +25,25 @@ function parseCSV(text) {
   return { headers, rows }
 }
 
+function validateRows(rows) {
+  const errs = []
+  rows.forEach((row, i) => {
+    if (!row.full_name) errs.push(`Row ${i + 2}: missing full_name`)
+    if (!row.email) errs.push(`Row ${i + 2}: missing email`)
+    if (row.email && !row.email.includes('@')) errs.push(`Row ${i + 2}: invalid email`)
+    if (!row.banner_id) errs.push(`Row ${i + 2}: missing banner_id`)
+    if (row.graduation_year && isNaN(parseInt(row.graduation_year))) errs.push(`Row ${i + 2}: graduation_year must be a 4-digit year`)
+  })
+  return errs
+}
+
 export default function BulkUpload() {
   const router = useRouter()
+  const fileRef = useRef(null)
+  const [fileName, setFileName] = useState('')
   const [csvText, setCsvText] = useState('')
+  const [showPaste, setShowPaste] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const [preview, setPreview] = useState([])
   const [errors, setErrors] = useState([])
   const [results, setResults] = useState([])
@@ -35,20 +51,53 @@ export default function BulkUpload() {
   const [done, setDone] = useState(false)
   const [progress, setProgress] = useState(0)
 
-  const handleParse = () => {
-    const { rows } = parseCSV(csvText)
-    const errs = []
-    rows.forEach((row, i) => {
-      if (!row.full_name) errs.push(`Row ${i + 2}: missing full_name`)
-      if (!row.email) errs.push(`Row ${i + 2}: missing email`)
-      if (row.email && !row.email.includes('@')) errs.push(`Row ${i + 2}: invalid email`)
-      if (!row.banner_id) errs.push(`Row ${i + 2}: missing banner_id — required for grade imports`)
-      if (row.graduation_year && isNaN(parseInt(row.graduation_year))) errs.push(`Row ${i + 2}: graduation_year must be a 4-digit year`)
-    })
+  function processText(text, name = '') {
+    const { rows } = parseCSV(text)
+    const errs = validateRows(rows)
     setErrors(errs)
     setPreview(rows)
     setResults([])
     setDone(false)
+    if (name) setFileName(name)
+  }
+
+  function handleFileInput(file) {
+    if (!file || !file.name.endsWith('.csv')) {
+      setErrors(['Please select a .csv file.'])
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = e => processText(e.target.result, file.name)
+    reader.readAsText(file)
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    setDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    handleFileInput(file)
+  }
+
+  function handlePasteChange(text) {
+    setCsvText(text)
+    setPreview([])
+    setResults([])
+    setDone(false)
+    setFileName('')
+  }
+
+  function handleParsePaste() {
+    processText(csvText)
+  }
+
+  function reset() {
+    setCsvText('')
+    setPreview([])
+    setResults([])
+    setDone(false)
+    setErrors([])
+    setFileName('')
+    if (fileRef.current) fileRef.current.value = ''
   }
 
   const handleUpload = async () => {
@@ -115,8 +164,10 @@ export default function BulkUpload() {
         {/* Template download */}
         <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6 flex items-start justify-between">
           <div>
-            <p className="text-sm font-medium text-blue-900">Start with the template</p>
-            <p className="text-xs text-teal-700 mt-0.5">Download the CSV template, fill it in, then paste or upload it below.</p>
+            <p className="text-sm font-medium text-teal-900">Need the template?</p>
+            <p className="text-xs text-teal-700 mt-0.5">
+              Columns: <code className="bg-teal-100 px-1 rounded">full_name</code>, <code className="bg-teal-100 px-1 rounded">email</code>, <code className="bg-teal-100 px-1 rounded">banner_id</code>, <code className="bg-teal-100 px-1 rounded">graduation_year</code>, <code className="bg-teal-100 px-1 rounded">specialty_interest</code>
+            </p>
           </div>
           <button onClick={downloadTemplate}
             className="text-sm bg-teal-600 text-white px-3 py-1.5 rounded-xl hover:bg-teal-700 flex-shrink-0 ml-4">
@@ -124,30 +175,78 @@ export default function BulkUpload() {
           </button>
         </div>
 
-        {/* CSV input */}
-        <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-4">
-          <label className="block text-sm font-medium text-stone-700 mb-2">Paste CSV content</label>
-          <p className="text-xs text-stone-400 mb-2">Required: <code className="bg-stone-100 px-1 rounded">full_name</code>, <code className="bg-stone-100 px-1 rounded">email</code>, <code className="bg-stone-100 px-1 rounded">banner_id</code>. Recommended: <code className="bg-stone-100 px-1 rounded">graduation_year</code> (e.g. 2027) — class year (MS1–MS4) is derived automatically. Optional: <code className="bg-stone-100 px-1 rounded">specialty_interest</code>.</p>
-          <textarea
-            value={csvText}
-            onChange={e => { setCsvText(e.target.value); setPreview([]); setResults([]); setDone(false) }}
-            rows={8}
-            placeholder={TEMPLATE_HEADERS + '\n' + TEMPLATE_EXAMPLE}
-            className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
-          />
-          <div className="flex gap-3 mt-3">
-            <button onClick={handleParse} disabled={!csvText.trim()}
-              className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-700 disabled:opacity-50">
-              Preview
-            </button>
-            {preview.length > 0 && errors.length === 0 && !done && (
-              <button onClick={handleUpload} disabled={running}
-                className="bg-teal-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-teal-700 disabled:opacity-50">
-                {running ? `Creating... (${progress}/${preview.length})` : `Create ${preview.length} Student${preview.length !== 1 ? 's' : ''}`}
+        {/* File upload */}
+        {!preview.length && !done && (
+          <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-4">
+            {/* Drop zone */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={e => handleFileInput(e.target.files?.[0])}
+            />
+            <div
+              onClick={() => fileRef.current?.click()}
+              onDragOver={e => { e.preventDefault(); setDragging(true) }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-xl px-6 py-10 text-center cursor-pointer transition-colors ${
+                dragging
+                  ? 'border-teal-400 bg-teal-50'
+                  : 'border-stone-200 hover:border-teal-300 hover:bg-stone-50'
+              }`}>
+              <div className="w-12 h-12 bg-stone-100 rounded-xl flex items-center justify-center text-2xl mx-auto mb-3">📄</div>
+              <p className="text-sm font-medium text-stone-700">Drop your CSV here, or click to browse</p>
+              <p className="text-xs text-stone-400 mt-1">Accepts .csv files</p>
+            </div>
+
+            {/* Paste toggle */}
+            <div className="mt-4 pt-4 border-t border-stone-100">
+              <button
+                onClick={() => setShowPaste(p => !p)}
+                className="text-xs text-stone-400 hover:text-stone-600 transition-colors">
+                {showPaste ? '▲ Hide' : '▼ Or paste CSV text instead'}
               </button>
-            )}
+              {showPaste && (
+                <div className="mt-3">
+                  <textarea
+                    value={csvText}
+                    onChange={e => handlePasteChange(e.target.value)}
+                    rows={6}
+                    placeholder={TEMPLATE_HEADERS + '\n' + TEMPLATE_EXAMPLE}
+                    className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                  <button
+                    onClick={handleParsePaste}
+                    disabled={!csvText.trim()}
+                    className="mt-2 bg-stone-800 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-stone-700 disabled:opacity-50">
+                    Preview
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Loaded file indicator */}
+        {fileName && preview.length > 0 && (
+          <div className="flex items-center gap-2 mb-4 px-1">
+            <span className="text-sm text-stone-500">📄 {fileName}</span>
+            <button onClick={reset} className="text-xs text-stone-400 hover:text-rose-500 transition-colors">✕ Remove</button>
+          </div>
+        )}
+
+        {/* Import button shown above preview when ready */}
+        {preview.length > 0 && errors.length === 0 && !done && (
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm text-stone-500">{preview.length} student{preview.length !== 1 ? 's' : ''} ready to import</p>
+            <button onClick={handleUpload} disabled={running}
+              className="bg-teal-600 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-teal-700 disabled:opacity-50">
+              {running ? `Creating… (${progress}/${preview.length})` : `Create ${preview.length} Student${preview.length !== 1 ? 's' : ''}`}
+            </button>
+          </div>
+        )}
 
         {/* Errors */}
         {errors.length > 0 && (
@@ -214,7 +313,7 @@ export default function BulkUpload() {
                 className="text-sm bg-gray-900 text-white px-4 py-2 rounded-xl hover:bg-gray-700">
                 Go to Students
               </button>
-              <button onClick={() => { setCsvText(''); setPreview([]); setResults([]); setDone(false); setErrors([]) }}
+              <button onClick={reset}
                 className="text-sm border border-stone-200 text-stone-600 px-4 py-2 rounded-xl hover:bg-stone-50">
                 Import More
               </button>

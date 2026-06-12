@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useParams, useRouter } from 'next/navigation'
 import DashboardNav from '@/app/components/DashboardNav'
+import GradesCard from '@/app/components/GradesCard'
 
 const DOC_TYPES = [
   { value: 'cv', label: 'CV' },
@@ -32,6 +33,7 @@ export default function StudentDetail() {
   const [newMessage, setNewMessage] = useState('')
   const [sendingMsg, setSendingMsg] = useState(false)
   const [lors, setLors] = useState([])
+  const [grades, setGrades] = useState([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,11 +74,15 @@ export default function StudentDetail() {
 
       const { data: lorData } = await supabase.from('lor_requests').select('*').eq('student_id', id).order('created_at')
 
+      const { data: gradesData } = await supabase
+        .from('course_grades').select('*').eq('student_id', id).order('academic_year', { ascending: false })
+
       setStudent(studentData)
       setProfile(studentData?.profiles)
       setNotes(notesData || [])
       setMilestones(milestonesData || [])
       setLors(lorData || [])
+      setGrades(gradesData || [])
       setLoading(false)
     }
     fetchData()
@@ -267,6 +273,9 @@ export default function StudentDetail() {
                 </div>
               )}
             </div>
+
+            {/* Grades */}
+            <GradesCard grades={grades} />
 
             {/* LOR summary */}
             {(() => {

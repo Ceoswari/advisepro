@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import DashboardNav from '@/app/components/DashboardNav'
 import { calculateCompetitiveness, TIER_LABELS } from '@/lib/scoring'
 import { useRef } from 'react'
+import GradesCard from '@/app/components/GradesCard'
 
 const ACADEMIC_DOC_TYPES = [
   { value: 'transcript', label: 'Transcript' },
@@ -34,6 +35,7 @@ export default function AdminStudentDetail() {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [studentUserId, setStudentUserId] = useState(null)
+  const [grades, setGrades] = useState([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -93,6 +95,12 @@ export default function AdminStudentDetail() {
         setAcademicFiles(allFiles)
       }
 
+      const { data: gradesData } = await supabase
+        .from('course_grades')
+        .select('*')
+        .eq('student_id', id)
+        .order('academic_year', { ascending: false })
+
       setStudent(studentData)
       setProfile(studentData?.profiles)
       setNotes(notesData || [])
@@ -100,6 +108,7 @@ export default function AdminStudentDetail() {
       setActivitiesCount(count || 0)
       setAssignedAdvisors(assignments || [])
       setAllAdvisors(advisorProfiles || [])
+      setGrades(gradesData || [])
       setLoading(false)
     }
 
@@ -375,6 +384,11 @@ export default function AdminStudentDetail() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Grades */}
+        <div className="mb-6">
+          <GradesCard grades={grades} />
         </div>
 
         {/* Academic Documents */}

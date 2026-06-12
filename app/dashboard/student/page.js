@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { calculateCompetitiveness, generateInsights, TIER_LABELS, NRMP_BENCHMARKS } from '@/lib/scoring'
+import GradesCard from '@/app/components/GradesCard'
 
 // ─── Benchmark bar chart ──────────────────────────────────────────────────────
 function BenchmarkCard({ student }) {
@@ -451,6 +452,7 @@ export default function StudentDashboard() {
   const [sendingMsg, setSendingMsg]         = useState(false)
   const [myProfileId, setMyProfileId]       = useState(null)
   const [lors, setLors]                     = useState([])
+  const [grades, setGrades]                 = useState([])
   const msgEndRef = useRef(null)
   const router = useRouter()
 
@@ -487,6 +489,7 @@ export default function StudentDashboard() {
         const { count: rotCount } = await supabase.from('away_rotations').select('id', { count: 'exact', head: true }).eq('student_id', studentData.id)
         const { data: notesData } = await supabase.from('advising_notes').select('*, profiles(full_name)').eq('student_id', studentData.id).order('meeting_date', { ascending: false })
         const { data: lorData } = await supabase.from('lor_requests').select('*').eq('student_id', studentData.id).order('created_at')
+        const { data: gradesData } = await supabase.from('course_grades').select('*').eq('student_id', studentData.id).order('academic_year', { ascending: false })
 
         setMilestones(milestonesData || [])
         const currentYear = studentData?.class_year ?? 'MS3'
@@ -496,6 +499,7 @@ export default function StudentDashboard() {
         setRotationsCount(rotCount || 0)
         setAdvisingNotes(notesData || [])
         setLors(lorData || [])
+        setGrades(gradesData || [])
       }
 
       // Fetch advisor + messages
@@ -693,6 +697,11 @@ export default function StudentDashboard() {
               {isMS4 && <ERASCountdownCard />}
             </div>
           )}
+
+          {/* Grades */}
+          <div className="mb-4">
+            <GradesCard grades={grades} />
+          </div>
 
           {/* LOR Tracker */}
           <div className="mb-4">

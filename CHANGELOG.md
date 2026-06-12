@@ -40,6 +40,11 @@ A running log of features, fixes, and improvements shipped to AdvisePro.
 
 ## June 9, 2026
 
+### Project Created
+- AdvisePro project initialized — residency advising platform for Cooper University Health Care
+- Built on Next.js (App Router) + Supabase (PostgreSQL, Auth, Storage, Realtime)
+- Deployed to Vercel at advisepro.vercel.app; source hosted at github.com/Ceoswari/advisepro
+
 ### Initial MVP Launch
 - Student dashboard with USMLE scores, research, volunteer hours, ERAS activities, publications, away rotations
 - Advisor dashboard showing all assigned students with competitiveness scores

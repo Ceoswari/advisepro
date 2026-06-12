@@ -34,6 +34,7 @@ BEGIN
   RAISE NOTICE 'Done. Kept student@test.com (%). All other students removed.', keep_id;
 END $$;
 
--- Note: Supabase Auth users for removed students are now orphaned but harmless
--- (no profile = can't reach any dashboard). To fully remove them:
--- Go to Supabase Dashboard → Authentication → Users → delete each one manually.
+-- Also delete orphaned Supabase Auth users for rowan.edu accounts.
+-- Required before re-importing students — otherwise bulk import fails with
+-- "A user with this email address has already been registered."
+DELETE FROM auth.users WHERE email LIKE '%@rowan.edu';

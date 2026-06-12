@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import DashboardNav from '@/app/components/DashboardNav'
@@ -106,8 +106,12 @@ const MATCH_STATUS = {
 
 export default function GradesImport() {
   const router = useRouter()
+  const fileRef = useRef(null)
   const [step, setStep] = useState('upload')   // upload → preview → confirm → done
   const [csvText, setCsvText] = useState('')
+  const [fileName, setFileName] = useState('')
+  const [dragging, setDragging] = useState(false)
+  const [showPaste, setShowPaste] = useState(false)
   const [parsed, setParsed] = useState(null)
   const [parseError, setParseError] = useState('')
   const [courseName, setCourseName] = useState('')
@@ -116,12 +120,22 @@ export default function GradesImport() {
   const [importing, setImporting] = useState(false)
   const [importResults, setImportResults] = useState([])
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0]
+  function loadFile(file) {
     if (!file) return
+    if (!file.name.endsWith('.csv')) { setParseError('Please select a .csv file.'); return }
+    setParseError('')
+    setFileName(file.name)
     const reader = new FileReader()
     reader.onload = (ev) => setCsvText(ev.target.result)
     reader.readAsText(file)
+  }
+
+  const handleFileUpload = (e) => loadFile(e.target.files?.[0])
+
+  function handleDrop(e) {
+    e.preventDefault()
+    setDragging(false)
+    loadFile(e.dataTransfer.files?.[0])
   }
 
   const handleParse = async () => {
@@ -250,26 +264,48 @@ export default function GradesImport() {
         {step === 'upload' && (
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-stone-200 p-6">
-              <h3 className="text-sm font-semibold text-stone-800 mb-4">Upload Progress IQ Export</h3>
+              <input ref={fileRef} type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
 
-              <label className="flex flex-col items-center justify-center border-2 border-dashed border-stone-200 rounded-xl p-10 cursor-pointer hover:border-teal-400 hover:bg-teal-50/30 transition-all">
-                <span className="text-3xl mb-3">📂</span>
-                <span className="text-sm font-medium text-stone-700">Click to upload CSV</span>
-                <span className="text-xs text-stone-400 mt-1">or paste the content below</span>
-                <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
-              </label>
+              {/* Drop zone */}
+              <div
+                onClick={() => fileRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); setDragging(true) }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-xl px-6 py-12 text-center cursor-pointer transition-colors ${
+                  dragging
+                    ? 'border-teal-400 bg-teal-50'
+                    : 'border-stone-200 hover:border-teal-300 hover:bg-stone-50'
+                }`}>
+                <div className="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-3">📂</div>
+                <p className="text-sm font-medium text-stone-700">Drop your CSV here, or click to browse</p>
+                <p className="text-xs text-stone-400 mt-1">Progress IQ grade export · .csv files only</p>
+              </div>
 
-              {csvText && (
-                <p className="text-xs text-emerald-600 mt-3 text-center">
-                  ✓ File loaded — {csvText.split('\n').length} lines
-                </p>
+              {/* Loaded file indicator */}
+              {fileName && (
+                <div className="flex items-center gap-2 mt-3 px-1">
+                  <span className="text-sm text-stone-500">📄 {fileName}</span>
+                  <button
+                    onClick={() => { setCsvText(''); setFileName(''); if (fileRef.current) fileRef.current.value = '' }}
+                    className="text-xs text-stone-400 hover:text-rose-500 transition-colors">✕ Remove</button>
+                </div>
               )}
 
-              <div className="mt-4">
-                <label className="block text-xs font-medium text-stone-500 mb-1">Or paste CSV content directly</label>
-                <textarea value={csvText} onChange={e => setCsvText(e.target.value)} rows={5}
-                  placeholder="Paste the CSV content from Progress IQ here..."
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-teal-500" />
+              {/* Paste toggle */}
+              <div className="mt-4 pt-4 border-t border-stone-100">
+                <button
+                  onClick={() => setShowPaste(p => !p)}
+                  className="text-xs text-stone-400 hover:text-stone-600 transition-colors">
+                  {showPaste ? '▲ Hide' : '▼ Or paste CSV text instead'}
+                </button>
+                {showPaste && (
+                  <div className="mt-3">
+                    <textarea value={csvText} onChange={e => { setCsvText(e.target.value); setFileName('') }} rows={5}
+                      placeholder="Paste the CSV content from Progress IQ here..."
+                      className="w-full border border-stone-200 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                  </div>
+                )}
               </div>
             </div>
 

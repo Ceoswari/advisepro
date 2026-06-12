@@ -102,6 +102,10 @@ export default function AdminDashboard() {
               className="text-sm text-stone-500 hover:text-stone-900 px-3 py-1.5 rounded-lg hover:bg-stone-50 transition-colors">
               Milestones
             </button>
+            <button onClick={() => router.push('/dashboard/admin/audit')}
+              className="text-sm text-stone-500 hover:text-stone-900 px-3 py-1.5 rounded-lg hover:bg-stone-50 transition-colors">
+              Audit Log
+            </button>
           </nav>
         </div>
         <div className="flex items-center gap-3">

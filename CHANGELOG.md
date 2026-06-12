@@ -4,6 +4,22 @@ A running log of features, fixes, and improvements shipped to AdvisePro.
 
 ---
 
+## June 12, 2026 (continued — security)
+
+### Session Timeout
+- All dashboard pages now auto sign out after 30 minutes of inactivity
+- A warning modal appears 2 minutes before sign-out with a countdown and "Stay signed in" option
+- Implemented via a shared dashboard layout so it applies to all roles (student, advisor, admin) automatically
+
+### Audit Log
+- New `audit_logs` table records every data change made by administrators — immutable, no updates or deletes allowed
+- Every save on the admin student edit page logs: which admin, which student, which fields changed, old value → new value, and timestamp
+- New **Audit Log** page at `/dashboard/admin/audit` — searchable by admin name, student name, or field
+- Audit Log added to the admin navigation
+- SQL migration in `security_migration.sql` — run in Supabase SQL Editor before this feature is active
+
+---
+
 ## June 12, 2026 (continued)
 
 ### Data Ownership & Permissions

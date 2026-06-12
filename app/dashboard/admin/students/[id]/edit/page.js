@@ -38,6 +38,7 @@ export default function AdminEditStudent() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [studentName, setStudentName] = useState('')
+  const [originalForm, setOriginalForm] = useState({})
   const [form, setForm] = useState({
     class_year: '',
     specialty_interest: '',
@@ -62,7 +63,7 @@ export default function AdminEditStudent() {
 
       if (studentData) {
         setStudentName(studentData.profiles?.full_name || '')
-        setForm({
+        const loaded = {
           class_year: studentData.class_year ?? '',
           specialty_interest: studentData.specialty_interest ?? '',
           usmle_step1_score: studentData.usmle_step1_score ?? '',
@@ -71,7 +72,9 @@ export default function AdminEditStudent() {
           research_count: studentData.research_count ?? '',
           volunteer_hours: studentData.volunteer_hours ?? '',
           risk_level: studentData.risk_level ?? '',
-        })
+        }
+        setForm(loaded)
+        setOriginalForm(loaded)
       }
 
       setLoading(false)
@@ -121,6 +124,36 @@ export default function AdminEditStudent() {
       setError(updateError.message)
       setSaving(false)
       return
+    }
+
+    // Write audit log — record each field that changed
+    const AUDIT_LABELS = {
+      class_year: 'Class Year',
+      specialty_interest: 'Specialty Interest',
+      usmle_step1_score: 'Step 1 Score',
+      usmle_step1_status: 'Step 1 Status',
+      usmle_step2_score: 'Step 2 Score',
+      research_count: 'Research Count',
+      volunteer_hours: 'Volunteer Hours',
+      risk_level: 'Risk Level',
+    }
+    const changedFields = Object.keys(AUDIT_LABELS).filter(key => {
+      const oldVal = String(originalForm[key] ?? '')
+      const newVal = String(form[key] ?? '')
+      return oldVal !== newVal
+    })
+    if (changedFields.length > 0) {
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      await supabase.from('audit_logs').insert({
+        performed_by: currentUser.id,
+        student_id: id,
+        action: 'edit_student',
+        changes: changedFields.map(key => ({
+          field: AUDIT_LABELS[key],
+          old_value: String(originalForm[key] ?? ''),
+          new_value: String(form[key] ?? ''),
+        })),
+      })
     }
 
     // Auto-assign specialty milestones if specialty changed

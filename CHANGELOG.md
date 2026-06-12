@@ -4,6 +4,45 @@ A running log of features, fixes, and improvements shipped to AdvisePro.
 
 ---
 
+## June 12, 2026 (continued — analytics, drag-and-drop, sample data)
+
+### Analytics — Step 1 and Grade Trends tabs
+- Analytics page expanded from a single overview into three tabs: **Overview**, **Step 1 Results**, **Grade Trends**
+- **Step 1 Results tab**: class year filter (All / MS1–MS4), pass rate, first-attempt pass rate, outcome breakdown by attempt count, per-class-year comparison bars, attempt distribution cards
+- **Grade Trends tab**: SVG line chart showing average course % by academic year with one line per class year — enables cross-cohort comparison over time; course and class year filters; summary table with per-course averages broken down by MS year
+- Overview tab unchanged — same institutional metrics as before
+
+### Graduation Year
+- Added `graduation_year` field to student records (e.g. 2027) — fixed cohort identifier that doesn't change as students advance
+- Bulk import template updated: `graduation_year` replaces `class_year`; MS year (MS1–MS4) is now derived automatically from graduation year at import time
+- `graduation_year_migration.sql` — run in Supabase SQL Editor before using
+
+### Drag-and-Drop File Upload
+- All three import pages now support drag-and-drop file upload with a consistent drop zone UI
+  - Bulk Import Students
+  - USMLE Step 1 Results
+  - Progress IQ Course Grades
+- Each page: drop or click to browse, shows loaded filename with a remove option, paste option collapsed behind a toggle
+
+### Sample Data
+- `sample_data/` folder added with 8 ready-to-upload test files:
+  - `step1_class2026.csv` — Class of 2026 Step 1 results (8 pass 1st attempt, 1 pass 2nd, 1 fail)
+  - `step1_class2027.csv` — Class of 2027 Step 1 results (8 pass 1st, 1 pass 2nd, 1 awaiting 2nd)
+  - `grades_BMED001_*` × 3 — Foundations of Medicine for classes of 2027, 2028, 2029
+  - `grades_BMED002_*` × 3 — Gross Anatomy for classes of 2027, 2028, 2029
+- Grade files span three academic years (AY23-24 through AY25-26) to populate the Grade Trends line chart
+
+### Fake Student Roster (Testing)
+- `fake_students.csv` — 40 fake students across Class of 2026 (MS4), 2027 (MS3), 2028 (MS2), 2029 (MS1), 10 per class
+- All accounts created with temporary password `ChangeMe123!`
+- `cleanup_students.sql` — deletes all students except `student@test.com`, including orphaned Supabase Auth accounts; run before re-importing to avoid "email already registered" errors
+
+### Bug Fixes
+- Fixed Step 1 import name-matching: query was fetching `user_id` but comparing against `profile_id`, causing every student to show as "Not found"
+- Fixed `cleanup_students.sql` to also delete `auth.users` rows — previously, re-running bulk import after cleanup would fail because Auth accounts outlived the database records
+
+---
+
 ## June 12, 2026 (continued — Step 1 import)
 
 ### USMLE Step 1 Results Import

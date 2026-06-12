@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 import DashboardNav from '@/app/components/DashboardNav'
 import { supabase } from '@/lib/supabase'
 
-const TEMPLATE_HEADERS = 'full_name,email,banner_id,class_year,specialty_interest'
+const TEMPLATE_HEADERS = 'full_name,email,banner_id,graduation_year,specialty_interest'
 const TEMPLATE_EXAMPLE = [
-  'Jane Smith,jane.smith@rowan.edu,916405336,MS1,',
-  'John Doe,john.doe@rowan.edu,916405337,MS2,',
-  'Alex Lee,alex.lee@rowan.edu,916405338,MS1,Emergency Medicine',
+  'Jane Smith,jane.smith@rowan.edu,916405336,2029,',
+  'John Doe,john.doe@rowan.edu,916405337,2028,',
+  'Alex Lee,alex.lee@rowan.edu,916405338,2027,Emergency Medicine',
 ].join('\n')
 
 function parseCSV(text) {
@@ -43,6 +43,7 @@ export default function BulkUpload() {
       if (!row.email) errs.push(`Row ${i + 2}: missing email`)
       if (row.email && !row.email.includes('@')) errs.push(`Row ${i + 2}: invalid email`)
       if (!row.banner_id) errs.push(`Row ${i + 2}: missing banner_id — required for grade imports`)
+      if (row.graduation_year && isNaN(parseInt(row.graduation_year))) errs.push(`Row ${i + 2}: graduation_year must be a 4-digit year`)
     })
     setErrors(errs)
     setPreview(rows)
@@ -66,6 +67,7 @@ export default function BulkUpload() {
             full_name: row.full_name,
             email: row.email,
             banner_id: row.banner_id || null,
+            graduation_year: row.graduation_year || null,
             class_year: row.class_year || null,
             specialty_interest: row.specialty_interest || null,
           })
@@ -125,7 +127,7 @@ export default function BulkUpload() {
         {/* CSV input */}
         <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-4">
           <label className="block text-sm font-medium text-stone-700 mb-2">Paste CSV content</label>
-          <p className="text-xs text-stone-400 mb-2">Required: <code className="bg-stone-100 px-1 rounded">full_name</code>, <code className="bg-stone-100 px-1 rounded">email</code>, <code className="bg-stone-100 px-1 rounded">banner_id</code>. Optional: <code className="bg-stone-100 px-1 rounded">class_year</code>, <code className="bg-stone-100 px-1 rounded">specialty_interest</code>.</p>
+          <p className="text-xs text-stone-400 mb-2">Required: <code className="bg-stone-100 px-1 rounded">full_name</code>, <code className="bg-stone-100 px-1 rounded">email</code>, <code className="bg-stone-100 px-1 rounded">banner_id</code>. Recommended: <code className="bg-stone-100 px-1 rounded">graduation_year</code> (e.g. 2027) — class year (MS1–MS4) is derived automatically. Optional: <code className="bg-stone-100 px-1 rounded">specialty_interest</code>.</p>
           <textarea
             value={csvText}
             onChange={e => { setCsvText(e.target.value); setPreview([]); setResults([]); setDone(false) }}
@@ -171,7 +173,7 @@ export default function BulkUpload() {
                   <div key={i} className="px-5 py-3 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-stone-900">{row.full_name}</p>
-                      <p className="text-xs text-stone-500">{row.email} · Banner: {row.banner_id || '—'} {row.class_year ? `· ${row.class_year}` : ''}</p>
+                      <p className="text-xs text-stone-500">{row.email} · Banner: {row.banner_id || '—'}{row.graduation_year ? ` · Class of ${row.graduation_year}` : ''}{row.class_year ? ` · ${row.class_year}` : ''}</p>
                     </div>
                     {result && (
                       <span className={`text-xs font-medium px-2 py-1 rounded-full ${result.status === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>

@@ -95,7 +95,7 @@ export default function Step1Import() {
     const nameMap = new Map()
     for (const p of (profiles || [])) {
       const key = (p.full_name || '').toLowerCase().trim()
-      const student = (students || []).find(s => s.user_id === p.id)
+      const student = (students || []).find(s => s.profile_id === p.id)
       if (!student) continue
       if (!nameMap.has(key)) nameMap.set(key, [])
       nameMap.get(key).push({ profileId: p.id, studentId: student.id, fullName: p.full_name })

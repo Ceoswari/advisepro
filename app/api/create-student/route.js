@@ -6,8 +6,20 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
+function classYearFromGraduationYear(graduationYear) {
+  const yearsLeft = parseInt(graduationYear) - new Date().getFullYear()
+  if (yearsLeft <= 0) return 'MS4'
+  if (yearsLeft === 1) return 'MS3'
+  if (yearsLeft === 2) return 'MS2'
+  return 'MS1'
+}
+
 export async function POST(request) {
   const body = await request.json()
+
+  // Derive class_year from graduation_year if not explicitly provided
+  const classYear = body.class_year ||
+    (body.graduation_year ? classYearFromGraduationYear(body.graduation_year) : null)
 
   // 1. Create auth user
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -40,7 +52,8 @@ export async function POST(request) {
     .insert({
       profile_id: authData.user.id,
       banner_id: body.banner_id || null,
-      class_year: body.class_year || null,
+      class_year: classYear,
+      graduation_year: body.graduation_year ? parseInt(body.graduation_year) : null,
       specialty_interest: body.specialty_interest || null,
       usmle_step1_score: body.usmle_step1_score ? parseInt(body.usmle_step1_score) : null,
       usmle_step1_status: body.usmle_step1_status || 'not_taken',

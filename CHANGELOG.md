@@ -4,6 +4,34 @@ A running log of features, fixes, and improvements shipped to AdvisePro.
 
 ---
 
+## June 12, 2026
+
+### Score Explanation Panel
+- Added `generateInsights()` to the scoring engine — analyzes the competitiveness breakdown and produces plain-language strengths, gaps, and recommended next steps
+- New **"What This Means For You"** card below the competitiveness score shows:
+  - Strengths (what the student is doing well relative to matched benchmarks)
+  - Gaps with specific numbers ("Your Step 2 is 12 points below the matched mean")
+  - 2–3 prioritized action items based on the biggest gaps
+
+### Year-Adaptive Dashboard
+- MS1 and MS2 students no longer see a near-zero competitiveness score — replaced with a **"Building Your Foundation"** view
+  - Year-specific focus areas with actionable guidance (research, Step 1 prep, letter writer relationships)
+  - Milestone progress bar for their current year
+  - Clear explanation of when the score becomes meaningful (MS3)
+- MS3/MS4 students see full scoring + insights + benchmark charts as before
+- MS4 students additionally see an **ERAS 2026–2027 countdown** with next milestone banner and full timeline
+
+### Letter of Recommendation (LOR) Tracker
+- New **Letters tab** on the student dashboard
+- Students can add letter writers with: faculty name, specialty, relationship type, status, target date, and notes
+- Status pipeline: Planning → Asked → Confirmed → Submitted
+- Confirmation progress bar (shows 1–4 slots, highlights how many are confirmed)
+- LOR summary widget on the Overview tab links to the Letters tab
+- Advisors can now see each student's full LOR list in the student detail page (Overview tab), including status and a warning if fewer than 3 are confirmed
+- SQL migration in `lor_migration.sql` — run in Supabase SQL Editor before using this feature
+
+---
+
 ## June 11, 2026
 
 ### Navigation

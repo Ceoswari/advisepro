@@ -31,6 +31,7 @@ export default function StudentDetail() {
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [sendingMsg, setSendingMsg] = useState(false)
+  const [lors, setLors] = useState([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -69,10 +70,13 @@ export default function StudentDetail() {
         setMessages(thread)
       }
 
+      const { data: lorData } = await supabase.from('lor_requests').select('*').eq('student_id', id).order('created_at')
+
       setStudent(studentData)
       setProfile(studentData?.profiles)
       setNotes(notesData || [])
       setMilestones(milestonesData || [])
+      setLors(lorData || [])
       setLoading(false)
     }
     fetchData()
@@ -263,6 +267,52 @@ export default function StudentDetail() {
                 </div>
               )}
             </div>
+
+            {/* LOR summary */}
+            {(() => {
+              const confirmed = lors.filter(l => l.status === 'confirmed' || l.status === 'submitted').length
+              const LOR_STATUS_COLORS = {
+                planning:  'bg-stone-100 text-stone-500',
+                asked:     'bg-blue-100 text-blue-700',
+                confirmed: 'bg-amber-100 text-amber-700',
+                submitted: 'bg-emerald-100 text-emerald-700',
+              }
+              return (
+                <div className="bg-white rounded-2xl border border-stone-100 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wide">Letters of Recommendation</h3>
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${confirmed >= 3 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {confirmed}/3 confirmed
+                    </span>
+                  </div>
+                  {lors.length === 0 ? (
+                    <p className="text-sm text-stone-400">No letter writers tracked yet. Remind this student to log their LOR contacts in the Letters tab.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {lors.map(lor => (
+                        <div key={lor.id} className="flex items-center gap-3 py-1.5">
+                          <div className="w-7 h-7 bg-stone-100 rounded-full flex items-center justify-center text-stone-500 text-xs font-semibold flex-shrink-0">
+                            {lor.faculty_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-stone-900 truncate">{lor.faculty_name}</p>
+                            {lor.faculty_specialty && <p className="text-xs text-stone-400 truncate">{lor.faculty_specialty}</p>}
+                          </div>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize flex-shrink-0 ${LOR_STATUS_COLORS[lor.status] || 'bg-stone-100 text-stone-500'}`}>
+                            {lor.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {lors.length > 0 && confirmed < 3 && (
+                    <p className="text-xs text-amber-600 mt-3 pt-3 border-t border-stone-100">
+                      ⚠ Needs {3 - confirmed} more confirmed letter{3 - confirmed !== 1 ? 's' : ''} before ERAS opens
+                    </p>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* Milestones summary */}
             <div className="bg-white rounded-2xl border border-stone-100 p-6">

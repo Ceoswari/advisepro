@@ -4,6 +4,17 @@ A running log of features, fixes, and improvements shipped to AdvisePro.
 
 ---
 
+## June 12, 2026 (continued)
+
+### Data Ownership & Permissions
+- Students can no longer edit USMLE scores, class year, research count, or volunteer hours — these are now admin-only fields
+- Student edit page simplified to specialty interest only, with a clear notice that official data is managed by the program
+- Admin student edit page now recalculates competitiveness score using all inputs (activities, publications, rotations) when saving — previously only used activity count
+- Specialty list on admin edit page synced to match the 22 specialties in the scoring engine
+- Admin edit page auto-assigns specialty-specific milestones when specialty is changed (previously only triggered from student side)
+
+---
+
 ## June 12, 2026
 
 ### Score Explanation Panel

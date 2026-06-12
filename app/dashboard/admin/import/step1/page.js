@@ -65,13 +65,29 @@ export default function Step1Import() {
   const [importing, setImporting] = useState(false)
   const [importedCount, setImportedCount] = useState(0)
   const [error, setError] = useState('')
+  const [dragging, setDragging] = useState(false)
+  const [fileName, setFileName] = useState('')
+
+  async function processFile(file) {
+    if (!file) return
+    if (!file.name.endsWith('.csv')) { setError('Please select a .csv file.'); return }
+    setError('')
+    setFileName(file.name)
+    const text = await file.text()
+    await parseAndMatch(text)
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    setDragging(false)
+    processFile(e.dataTransfer.files?.[0])
+  }
 
   async function handleFile(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setError('')
+    processFile(e.target.files?.[0])
+  }
 
-    const text = await file.text()
+  async function parseAndMatch(text) {
     const parsed = parseStep1CSV(text)
 
     if (parsed.length === 0) {
@@ -181,45 +197,56 @@ export default function Step1Import() {
 
         {/* ── Step 1: Upload ── */}
         {step === 1 && (
-          <div className="bg-white rounded-2xl border border-stone-100 p-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">🩺</div>
-              <h3 className="text-lg font-semibold text-stone-900 mb-1">NBME Step 1 Export</h3>
-              <p className="text-sm text-stone-500 mb-6 max-w-md mx-auto">
-                Upload the CSV class summary from NBME. The file should have columns: Last Name, First Name, Step 1 (First Attempt), Step 1 (Second Attempt).
-              </p>
+          <div className="bg-white rounded-2xl border border-stone-100 p-6">
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv"
+              onChange={handleFile}
+              className="hidden"
+            />
 
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".csv"
-                onChange={handleFile}
-                className="hidden"
-              />
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="bg-teal-600 text-white px-6 py-2.5 rounded-xl hover:bg-teal-700 font-medium text-sm transition-colors">
-                Choose CSV file
-              </button>
+            {/* Drop zone */}
+            <div
+              onClick={() => fileRef.current?.click()}
+              onDragOver={e => { e.preventDefault(); setDragging(true) }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-xl px-6 py-12 text-center cursor-pointer transition-colors ${
+                dragging
+                  ? 'border-teal-400 bg-teal-50'
+                  : 'border-stone-200 hover:border-teal-300 hover:bg-stone-50'
+              }`}>
+              <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-3">🩺</div>
+              <p className="text-sm font-medium text-stone-700">Drop your CSV here, or click to browse</p>
+              <p className="text-xs text-stone-400 mt-1">NBME Step 1 class export · .csv files only</p>
+            </div>
 
-              {error && (
-                <p className="mt-4 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">{error}</p>
-              )}
+            {error && (
+              <p className="mt-4 text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">{error}</p>
+            )}
 
-              <div className="mt-8 bg-stone-50 rounded-xl p-4 text-left">
-                <p className="text-xs font-semibold text-stone-600 mb-2">Expected file format</p>
-                <div className="font-mono text-xs text-stone-500 space-y-1">
-                  <p>Row 1: Class of [Year] Step 1 Analysis…  <span className="text-stone-300">(title — skipped)</span></p>
-                  <p>Row 2: Last Name, First Name, Step 1 (First Attempt, Step 1 (Second Attempt  <span className="text-stone-300">(headers)</span></p>
-                  <p>Row 3+: Smith, Jane, Pass,  <span className="text-stone-300">(passed first try)</span></p>
-                  <p>Row 3+: Doe, John, Unsuccessful, Pass  <span className="text-stone-300">(passed second try)</span></p>
-                </div>
+            <div className="mt-5 bg-stone-50 rounded-xl p-4">
+              <p className="text-xs font-semibold text-stone-600 mb-2">Expected file format</p>
+              <div className="font-mono text-xs text-stone-500 space-y-1">
+                <p>Row 1: Class of [Year] Step 1 Analysis…  <span className="text-stone-300">(title — skipped)</span></p>
+                <p>Row 2: Last Name, First Name, Step 1 (First Attempt, Step 1 (Second Attempt  <span className="text-stone-300">(headers)</span></p>
+                <p>Row 3+: Smith, Jane, Pass,  <span className="text-stone-300">(passed first try)</span></p>
+                <p>Row 3+: Doe, John, Unsuccessful, Pass  <span className="text-stone-300">(passed second try)</span></p>
               </div>
             </div>
           </div>
         )}
 
         {/* ── Step 2: Preview ── */}
+        {step === 2 && fileName && (
+          <div className="flex items-center gap-2 mb-4 px-1">
+            <span className="text-sm text-stone-500">📄 {fileName}</span>
+            <button
+              onClick={() => { setStep(1); setRows([]); setFileName(''); if (fileRef.current) fileRef.current.value = '' }}
+              className="text-xs text-stone-400 hover:text-rose-500 transition-colors">✕ Remove</button>
+          </div>
+        )}
         {step === 2 && (
           <div>
             {/* Summary bar */}
@@ -303,7 +330,7 @@ export default function Step1Import() {
 
             <div className="flex gap-3">
               <button
-                onClick={() => { setStep(1); setRows([]); if (fileRef.current) fileRef.current.value = '' }}
+                onClick={() => { setStep(1); setRows([]); setFileName(''); if (fileRef.current) fileRef.current.value = '' }}
                 className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-600 text-sm hover:bg-stone-50">
                 Back
               </button>
@@ -328,7 +355,7 @@ export default function Step1Import() {
             </p>
             <div className="flex gap-3 justify-center">
               <button
-                onClick={() => { setStep(1); setRows([]); if (fileRef.current) fileRef.current.value = '' }}
+                onClick={() => { setStep(1); setRows([]); setFileName(''); if (fileRef.current) fileRef.current.value = '' }}
                 className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-600 text-sm hover:bg-stone-50">
                 Import another file
               </button>

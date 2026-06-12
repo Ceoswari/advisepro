@@ -6,6 +6,31 @@ import { useParams, useRouter } from 'next/navigation'
 import DashboardNav from '@/app/components/DashboardNav'
 import { calculateCompetitiveness } from '@/lib/scoring'
 
+const SPECIALTIES = [
+  'Anesthesiology',
+  'Child Neurology',
+  'Dermatology',
+  'Diagnostic Radiology',
+  'Emergency Medicine',
+  'Family Medicine',
+  'General Surgery',
+  'Internal Medicine',
+  'Internal Medicine/Pediatrics',
+  'Interventional Radiology',
+  'Neurological Surgery',
+  'Neurology',
+  'Obstetrics and Gynecology',
+  'Orthopaedic Surgery',
+  'Otolaryngology',
+  'Pathology',
+  'Pediatrics',
+  'Physical Medicine and Rehabilitation',
+  'Plastic Surgery',
+  'Psychiatry',
+  'Radiation Oncology',
+  'Vascular Surgery',
+]
+
 export default function AdminEditStudent() {
   const { id } = useParams()
   const router = useRouter()
@@ -51,7 +76,6 @@ export default function AdminEditStudent() {
 
       setLoading(false)
     }
-
     fetchData()
   }, [id])
 
@@ -74,26 +98,48 @@ export default function AdminEditStudent() {
       volunteer_hours: form.volunteer_hours ? parseInt(form.volunteer_hours) : 0,
     }
 
-    // Fetch activities count for score calculation
-    const { count: activitiesCount } = await supabase
-      .from('activities')
-      .select('id', { count: 'exact', head: true })
-      .eq('student_id', id)
+    // Fetch all scoring inputs for accurate recalculation
+    const [
+      { count: activitiesCount },
+      { data: pubData },
+      { count: rotCount },
+    ] = await Promise.all([
+      supabase.from('activities').select('id', { count: 'exact', head: true }).eq('student_id', id),
+      supabase.from('publications').select('publication_type').eq('student_id', id),
+      supabase.from('away_rotations').select('id', { count: 'exact', head: true }).eq('student_id', id),
+    ])
 
-    const result = calculateCompetitiveness(updatedStudent, activitiesCount || 0)
-
-    // Admin can also manually override risk level
+    const result = calculateCompetitiveness(updatedStudent, activitiesCount || 0, pubData || [], rotCount || 0)
     const riskLevel = form.risk_level || result?.riskLevel || null
 
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from('students')
       .update({ ...updatedStudent, risk_level: riskLevel })
       .eq('id', id)
 
-    if (error) {
-      setError(error.message)
+    if (updateError) {
+      setError(updateError.message)
       setSaving(false)
       return
+    }
+
+    // Auto-assign specialty milestones if specialty changed
+    if (updatedStudent.specialty_interest) {
+      const { data: specialtyMilestones } = await supabase
+        .from('milestones').select('id').eq('specialty', updatedStudent.specialty_interest)
+
+      if (specialtyMilestones?.length > 0) {
+        const { data: existing } = await supabase
+          .from('student_milestones').select('milestone_id').eq('student_id', id)
+          .in('milestone_id', specialtyMilestones.map(m => m.id))
+
+        const existingIds = new Set(existing?.map(e => e.milestone_id) || [])
+        const toInsert = specialtyMilestones
+          .filter(m => !existingIds.has(m.id))
+          .map(m => ({ student_id: id, milestone_id: m.id, status: 'not_started' }))
+
+        if (toInsert.length > 0) await supabase.from('student_milestones').insert(toInsert)
+      }
     }
 
     router.push(`/dashboard/admin/students/${id}`)
@@ -113,6 +159,7 @@ export default function AdminEditStudent() {
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-stone-200 p-6 space-y-5">
 
+          {/* Year + Specialty */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">Class Year</label>
@@ -130,66 +177,62 @@ export default function AdminEditStudent() {
               <select name="specialty_interest" value={form.specialty_interest} onChange={handleChange}
                 className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
                 <option value="">Select specialty</option>
-                <option>Anesthesiology</option>
-                <option>Dermatology</option>
-                <option>Emergency Medicine</option>
-                <option>Family Medicine</option>
-                <option>Internal Medicine</option>
-                <option>Neurology</option>
-                <option>Obstetrics and Gynecology</option>
-                <option>Ophthalmology</option>
-                <option>Orthopedic Surgery</option>
-                <option>Otolaryngology</option>
-                <option>Pathology</option>
-                <option>Pediatrics</option>
-                <option>Physical Medicine and Rehabilitation</option>
-                <option>Plastic Surgery</option>
-                <option>Psychiatry</option>
-                <option>Radiology</option>
-                <option>Surgery</option>
-                <option>Urology</option>
+                {SPECIALTIES.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Step 1 Status</label>
-              <select name="usmle_step1_status" value={form.usmle_step1_status} onChange={handleChange}
-                className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
-                <option value="not_taken">Not Taken</option>
-                <option value="pass">Pass</option>
-                <option value="fail">Fail</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Step 1 Score</label>
-              <input name="usmle_step1_score" type="number" value={form.usmle_step1_score} onChange={handleChange}
-                className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Step 2 Score</label>
-              <input name="usmle_step2_score" type="number" value={form.usmle_step2_score} onChange={handleChange}
-                className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Research Experiences</label>
-              <input name="research_count" type="number" value={form.research_count} onChange={handleChange}
-                className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">Volunteer Hours</label>
-              <input name="volunteer_hours" type="number" value={form.volunteer_hours} onChange={handleChange}
-                className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+          {/* Board scores */}
+          <div>
+            <p className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-3">Board Scores</p>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Step 1 Status</label>
+                <select name="usmle_step1_status" value={form.usmle_step1_status} onChange={handleChange}
+                  className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                  <option value="not_taken">Not Taken</option>
+                  <option value="pass">Pass</option>
+                  <option value="fail">Fail</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Step 1 Score</label>
+                <input name="usmle_step1_score" type="number" value={form.usmle_step1_score} onChange={handleChange}
+                  placeholder="e.g. 235"
+                  className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Step 2 CK Score</label>
+                <input name="usmle_step2_score" type="number" value={form.usmle_step2_score} onChange={handleChange}
+                  placeholder="e.g. 250"
+                  className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+              </div>
             </div>
           </div>
 
+          {/* Institutional data */}
+          <div>
+            <p className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-3">Institutional Data</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Research Experiences</label>
+                <input name="research_count" type="number" value={form.research_count} onChange={handleChange}
+                  placeholder="0"
+                  className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Volunteer Hours</label>
+                <input name="volunteer_hours" type="number" value={form.volunteer_hours} onChange={handleChange}
+                  placeholder="0"
+                  className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+              </div>
+            </div>
+          </div>
+
+          {/* Risk override */}
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-1">Risk Level Override</label>
-            <p className="text-xs text-stone-400 mb-1">Leave blank to use the auto-calculated score. Set manually to override.</p>
+            <p className="text-xs text-stone-400 mb-2">Leave blank to use the auto-calculated score.</p>
             <select name="risk_level" value={form.risk_level} onChange={handleChange}
               className="w-full border border-stone-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
               <option value="">Auto-calculate from scores</option>
@@ -203,7 +246,7 @@ export default function AdminEditStudent() {
 
           <button type="submit" disabled={saving}
             className="w-full bg-teal-600 text-white py-2 px-4 rounded-xl text-sm font-medium hover:bg-teal-700 disabled:opacity-50">
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving & recalculating score...' : 'Save Changes'}
           </button>
         </form>
       </div>

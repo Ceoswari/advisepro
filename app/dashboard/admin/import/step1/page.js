@@ -105,7 +105,7 @@ export default function Step1Import() {
 
     const { data: students } = await supabase
       .from('students')
-      .select('id, user_id')
+      .select('id, profile_id')
 
     // Build map: normalized full_name → [{ profile_id, student_id }]
     const nameMap = new Map()

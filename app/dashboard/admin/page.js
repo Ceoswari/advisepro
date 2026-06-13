@@ -15,6 +15,7 @@ export default function AdminDashboard() {
   const [filterSpecialty, setFilterSpecialty] = useState('')
 
   // Bulk selection state
+  const [selectMode, setSelectMode]   = useState(false)
   const [selected, setSelected]       = useState(new Set())
   const [bulkAdvisor, setBulkAdvisor] = useState('')
   const [assigning, setAssigning]     = useState(false)
@@ -124,6 +125,11 @@ export default function AdminDashboard() {
     setSelected(new Set())
     setBulkAdvisor('')
     setAssignResult(null)
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false)
+    clearSelection()
   }
 
   // ── Bulk assign ──────────────────────────────────────────────────────────────
@@ -317,8 +323,8 @@ export default function AdminDashboard() {
                 {assigning ? 'Assigning…' : 'Assign Advisor'}
               </button>
             </div>
-            <button onClick={clearSelection} className="text-teal-200 hover:text-white text-sm flex-shrink-0 transition-colors">
-              Clear selection
+            <button onClick={exitSelectMode} className="text-teal-200 hover:text-white text-sm flex-shrink-0 transition-colors">
+              Cancel
             </button>
           </div>
         )}
@@ -327,19 +333,31 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-2xl shadow-sm border border-stone-100">
           <div className="px-6 py-4 border-b border-stone-100 flex justify-between items-center">
             <div className="flex items-center gap-3">
-              {/* Select-all checkbox */}
-              <input
-                type="checkbox"
-                checked={allFilteredSelected}
-                ref={el => { if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected }}
-                onChange={toggleSelectAll}
-                className="w-4 h-4 rounded accent-teal-600 cursor-pointer"
-              />
+              {selectMode && (
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  ref={el => { if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected }}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 rounded accent-teal-600 cursor-pointer"
+                />
+              )}
               <h3 className="text-sm font-semibold text-stone-700">All Students</h3>
             </div>
             <div className="flex items-center gap-3">
               {filtered.length < students.length && (
                 <span className="text-xs text-stone-400">Showing {filtered.length} of {students.length}</span>
+              )}
+              {selectMode ? (
+                <button onClick={exitSelectMode}
+                  className="text-xs text-stone-500 hover:text-stone-900 border border-stone-200 px-3 py-1.5 rounded-xl hover:bg-stone-50 transition-colors">
+                  Cancel
+                </button>
+              ) : (
+                <button onClick={() => setSelectMode(true)}
+                  className="text-xs text-teal-600 hover:text-teal-800 border border-teal-200 px-3 py-1.5 rounded-xl hover:bg-teal-50 transition-colors">
+                  Select
+                </button>
               )}
               <button onClick={exportCSV}
                 className="text-xs text-stone-600 hover:text-stone-900 border border-stone-200 px-3 py-1.5 rounded-xl hover:bg-stone-50 transition-colors">
@@ -359,14 +377,16 @@ export default function AdminDashboard() {
                 return (
                   <div key={student.id}
                     className={`px-6 py-4 flex items-center gap-4 transition-colors ${isSelected ? 'bg-teal-50' : 'hover:bg-stone-50'}`}>
-                    {/* Checkbox */}
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleStudent(student.id)}
-                      onClick={e => e.stopPropagation()}
-                      className="w-4 h-4 rounded accent-teal-600 cursor-pointer flex-shrink-0"
-                    />
+                    {/* Checkbox — only visible in select mode */}
+                    {selectMode && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleStudent(student.id)}
+                        onClick={e => e.stopPropagation()}
+                        className="w-4 h-4 rounded accent-teal-600 cursor-pointer flex-shrink-0"
+                      />
+                    )}
 
                     {/* Name / info — clicking navigates */}
                     <div className="flex-1 cursor-pointer min-w-0" onClick={() => router.push(`/dashboard/admin/students/${student.id}`)}>

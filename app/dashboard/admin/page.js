@@ -232,11 +232,24 @@ export default function AdminDashboard() {
                     <p className="text-sm text-stone-400 mt-0.5">{student.class_year} · {student.specialty_interest ?? 'No specialty'}</p>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="text-xs text-stone-400">Step 1</p>
-                      <p className="font-medium text-stone-900 text-sm">{student.usmle_step1_score ?? '—'}</p>
+                    <div className="text-right min-w-[72px]">
+                      <p className="text-xs text-stone-400 mb-0.5">Step 1</p>
+                      {student.usmle_step1_status ? (
+                        <>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${student.usmle_step1_status === 'pass' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                            {student.usmle_step1_status === 'pass' ? 'Pass' : 'Fail'}
+                          </span>
+                          {student.usmle_step1_attempts != null && (
+                            <p className="text-xs text-stone-400 mt-0.5">
+                              {student.usmle_step1_attempts === 1 ? '1st attempt' : `${student.usmle_step1_attempts} attempts`}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="font-medium text-stone-300 text-sm">—</p>
+                      )}
                     </div>
-                    <div className="text-right">
+                    <div className="text-right min-w-[52px]">
                       <p className="text-xs text-stone-400">Step 2</p>
                       <p className="font-medium text-stone-900 text-sm">{student.usmle_step2_score ?? '—'}</p>
                     </div>

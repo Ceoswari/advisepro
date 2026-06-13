@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import DashboardNav, { STUDENT_NAV } from '@/app/components/DashboardNav'
 import { calculateCompetitiveness, generateInsights, TIER_LABELS, NRMP_BENCHMARKS } from '@/lib/scoring'
 import GradesCard from '@/app/components/GradesCard'
 
@@ -439,7 +440,8 @@ export default function StudentDashboard() {
   const [profile, setProfile]               = useState(null)
   const [student, setStudent]               = useState(null)
   const [loading, setLoading]               = useState(true)
-  const [activeTab, setActiveTab]           = useState('overview')
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab]           = useState(() => searchParams.get('tab') || 'overview')
   const [milestones, setMilestones]         = useState([])
   const [openYears, setOpenYears]           = useState({})
   const [activitiesCount, setActivitiesCount] = useState(0)
@@ -564,28 +566,20 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      {/* Nav */}
-      <div className="bg-white border-b border-stone-100 shadow-sm px-8 h-16 flex items-center justify-between sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard/student')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="w-8 h-8 bg-teal-600 rounded-xl flex items-center justify-center">
-            <span className="text-white text-sm font-bold">A</span>
-          </div>
-          <span className="font-bold text-stone-900 text-lg">AdvisePro</span>
+      <DashboardNav
+        activeTab={activeTab}
+        navItems={[
+          { label: 'Overview',   href: '/dashboard/student', tab: 'overview',   isDefault: true },
+          { label: 'Milestones', href: '/dashboard/student', tab: 'milestones', badge: pendingMilestones },
+          { label: 'Grades',     href: '/dashboard/student', tab: 'grades',     badge: grades.length },
+          { label: 'Messages',   href: '/dashboard/student', tab: 'messages',   badge: unreadMessages },
+        ]}
+      >
+        <button onClick={() => router.push('/dashboard/student/edit')}
+          className="text-sm text-stone-500 hover:text-stone-900 border border-stone-200 px-3 py-1.5 rounded-xl transition-colors">
+          Edit Profile
         </button>
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/dashboard/student/edit')}
-            className="text-sm text-stone-500 hover:text-stone-900 border border-stone-200 px-3 py-1.5 rounded-xl transition-colors">
-            Edit Profile
-          </button>
-          <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
-            <span className="text-teal-700 text-xs font-semibold">{initials}</span>
-          </div>
-          <button onClick={async () => { await supabase.auth.signOut(); window.location.href = '/login' }}
-            className="text-sm text-stone-400 hover:text-stone-700 transition-colors">
-            Sign out
-          </button>
-        </div>
-      </div>
+      </DashboardNav>
 
       <div className="max-w-5xl mx-auto px-8 py-8">
         {/* Header */}
@@ -594,23 +588,6 @@ export default function StudentDashboard() {
           <p className="text-stone-500 mt-1">{student?.class_year} · {student?.specialty_interest ?? 'No specialty selected'}</p>
         </div>
 
-        {/* Tab bar */}
-        <div className="flex gap-1 mb-6 bg-white rounded-2xl border border-stone-100 p-1 w-fit shadow-sm">
-          {[
-            { id: 'overview',   label: 'Overview' },
-            { id: 'milestones', label: 'Milestones', badge: pendingMilestones },
-            { id: 'grades',     label: 'Grades',     badge: grades.length },
-            { id: 'messages',   label: 'Messages',   badge: unreadMessages },
-          ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 ${activeTab === tab.id ? 'bg-teal-600 text-white shadow-sm' : 'text-stone-500 hover:text-stone-800'}`}>
-              {tab.label}
-              {tab.badge > 0 && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-500'}`}>{tab.badge}</span>
-              )}
-            </button>
-          ))}
-        </div>
 
         {/* ══════════════════ OVERVIEW TAB ══════════════════ */}
         {activeTab === 'overview' && <>

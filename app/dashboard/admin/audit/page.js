@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import DashboardNav from '@/app/components/DashboardNav'
+import DashboardNav, { ADMIN_NAV } from '@/app/components/DashboardNav'
 import { useRouter } from 'next/navigation'
 
 const NAV_ITEMS = [
@@ -59,7 +59,7 @@ export default function AuditLogPage() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      <DashboardNav navItems={NAV_ITEMS} />
+      <DashboardNav navItems={ADMIN_NAV} />
 
       <div className="max-w-5xl mx-auto px-8 py-8">
         <div className="mb-6">

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useParams, useRouter } from 'next/navigation'
-import DashboardNav from '@/app/components/DashboardNav'
+import DashboardNav, { ADVISOR_NAV } from '@/app/components/DashboardNav'
 import GradesCard from '@/app/components/GradesCard'
 
 const DOC_TYPES = [
@@ -188,7 +188,7 @@ export default function StudentDetail() {
   return (
     <div className="min-h-screen bg-stone-50">
       {/* Header */}
-      <DashboardNav backHref="/dashboard/advisor" />
+      <DashboardNav navItems={ADVISOR_NAV} />
 
       <div className="max-w-4xl mx-auto px-8 py-8">
         {/* Student header */}

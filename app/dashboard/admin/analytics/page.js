@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import DashboardNav from '@/app/components/DashboardNav'
+import DashboardNav, { ADMIN_NAV } from '@/app/components/DashboardNav'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -335,11 +335,7 @@ export default function Analytics() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      <DashboardNav navItems={[
-        { label: 'Students',   href: '/dashboard/admin'           },
-        { label: 'Analytics',  href: '/dashboard/admin/analytics' },
-        { label: 'Milestones', href: '/dashboard/admin/milestones'},
-      ]} />
+      <DashboardNav navItems={ADMIN_NAV} />
 
       <div className="max-w-5xl mx-auto px-8 py-8">
         <div className="mb-6">

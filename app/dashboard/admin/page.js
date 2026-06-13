@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import DashboardNav, { ADMIN_NAV } from '@/app/components/DashboardNav'
 
 export default function AdminDashboard() {
   const [profile, setProfile]       = useState(null)
@@ -170,47 +171,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      {/* Nav */}
-      <div className="bg-white border-b border-stone-100 shadow-sm px-8 h-16 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-6">
-          <button onClick={() => router.push('/dashboard/admin')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 bg-teal-600 rounded-xl flex items-center justify-center">
-              <span className="text-white text-sm font-bold">A</span>
-            </div>
-            <span className="font-bold text-stone-900 text-lg">AdvisePro</span>
-          </button>
-          <nav className="flex gap-1">
-            <span className="text-sm font-medium text-teal-700 bg-teal-50 px-3 py-1.5 rounded-lg">Students</span>
-            <button onClick={() => router.push('/dashboard/admin/analytics')}
-              className="text-sm text-stone-500 hover:text-stone-900 px-3 py-1.5 rounded-lg hover:bg-stone-50 transition-colors">
-              Analytics
-            </button>
-            <button onClick={() => router.push('/dashboard/admin/milestones')}
-              className="text-sm text-stone-500 hover:text-stone-900 px-3 py-1.5 rounded-lg hover:bg-stone-50 transition-colors">
-              Milestones
-            </button>
-            <button onClick={() => router.push('/dashboard/admin/import')}
-              className="text-sm text-stone-500 hover:text-stone-900 px-3 py-1.5 rounded-lg hover:bg-stone-50 transition-colors">
-              Import Data
-            </button>
-            <button onClick={() => router.push('/dashboard/admin/audit')}
-              className="text-sm text-stone-500 hover:text-stone-900 px-3 py-1.5 rounded-lg hover:bg-stone-50 transition-colors">
-              Audit Log
-            </button>
-          </nav>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
-            <span className="text-teal-700 text-xs font-semibold">{initials}</span>
-          </div>
-          <span className="text-sm text-stone-500">{profile?.full_name} · Admin</span>
-          <button
-            onClick={async () => { await supabase.auth.signOut(); window.location.href = '/login' }}
-            className="text-sm text-stone-400 hover:text-stone-700 border border-stone-200 px-3 py-1.5 rounded-xl transition-colors">
-            Sign Out
-          </button>
-        </div>
-      </div>
+      <DashboardNav navItems={ADMIN_NAV} />
 
       <div className="max-w-5xl mx-auto px-8 py-8">
         {/* Header */}

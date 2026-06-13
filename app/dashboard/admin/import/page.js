@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import DashboardNav from '@/app/components/DashboardNav'
+import DashboardNav, { ADMIN_NAV } from '@/app/components/DashboardNav'
 
 const IMPORT_TYPES = [
   {
@@ -47,7 +47,7 @@ export default function ImportHub() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      <DashboardNav backHref="/dashboard/admin" />
+      <DashboardNav navItems={ADMIN_NAV} />
 
       <div className="max-w-3xl mx-auto px-8 py-8">
         <div className="mb-8">

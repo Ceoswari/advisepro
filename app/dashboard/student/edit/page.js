@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import DashboardNav from '@/app/components/DashboardNav'
+import DashboardNav, { STUDENT_NAV } from '@/app/components/DashboardNav'
 
 const SPECIALTIES = [
   'Anesthesiology',
@@ -107,7 +107,7 @@ export default function EditStudentProfile() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      <DashboardNav backHref="/dashboard/student" />
+      <DashboardNav navItems={STUDENT_NAV} />
 
       <div className="max-w-2xl mx-auto px-8 py-8">
         <div className="mb-8">

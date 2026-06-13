@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import DashboardNav, { ADVISOR_NAV } from '@/app/components/DashboardNav'
 
 function daysSince(dateStr) {
   if (!dateStr) return null
@@ -22,6 +23,7 @@ export default function AdvisorDashboard() {
   const [conversations, setConversations] = useState([])
   const [myProfileId, setMyProfileId] = useState(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,6 +77,11 @@ export default function AdvisorDashboard() {
     fetchData()
   }, [])
 
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab) setActiveTab(tab)
+  }, [searchParams])
+
   const needsAttention = (student) => {
     if (student.risk_level === 'high') return true
     const last = lastMeetings[student.id]
@@ -100,8 +107,6 @@ export default function AdvisorDashboard() {
     return matchSearch && matchRisk && matchYear && matchAttention
   })
 
-  const initials = profile?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-
   if (loading) return (
     <div className="min-h-screen bg-stone-50 flex items-center justify-center">
       <div className="text-stone-400 text-sm">Loading...</div>
@@ -110,48 +115,20 @@ export default function AdvisorDashboard() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      {/* Nav */}
-      <div className="bg-white border-b border-stone-100 shadow-sm px-8 h-16 flex items-center justify-between sticky top-0 z-10">
-        <button onClick={() => router.push('/dashboard/advisor')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="w-8 h-8 bg-teal-600 rounded-xl flex items-center justify-center">
-            <span className="text-white text-sm font-bold">A</span>
-          </div>
-          <span className="font-bold text-stone-900 text-lg">AdvisePro</span>
-        </button>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
-            <span className="text-teal-700 text-xs font-semibold">{initials}</span>
-          </div>
-          <span className="text-sm text-stone-500">{profile?.full_name}</span>
-          <button
-            onClick={async () => { await supabase.auth.signOut(); window.location.href = '/login' }}
-            className="text-sm text-stone-400 hover:text-stone-700 border border-stone-200 px-3 py-1.5 rounded-xl transition-colors">
-            Sign Out
-          </button>
-        </div>
-      </div>
+      <DashboardNav
+        navItems={[
+          { label: 'My Students', href: '/dashboard/advisor', tab: 'students', isDefault: true },
+          { label: 'Messages',    href: '/dashboard/advisor', tab: 'messages',
+            badge: conversations.filter(c => c.lastMsg.sender_id !== myProfileId && !c.lastMsg.read_at).length },
+        ]}
+        activeTab={activeTab}
+      />
 
       <div className="max-w-4xl mx-auto px-8 py-8">
         {/* Header */}
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-stone-900">{activeTab === 'students' ? 'My Students' : 'Messages'}</h2>
           <p className="text-stone-500 mt-1">{students.length} student{students.length !== 1 ? 's' : ''} assigned</p>
-        </div>
-
-        {/* Tab bar */}
-        <div className="flex gap-1 mb-6 bg-white rounded-2xl border border-stone-100 p-1 w-fit shadow-sm">
-          {[
-            { id: 'students', label: 'My Students' },
-            { id: 'messages', label: 'Messages', badge: conversations.filter(c => c.lastMsg.sender_id !== myProfileId && !c.lastMsg.read_at).length },
-          ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 ${activeTab === tab.id ? 'bg-teal-600 text-white shadow-sm' : 'text-stone-500 hover:text-stone-800'}`}>
-              {tab.label}
-              {tab.badge > 0 && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-600'}`}>{tab.badge}</span>
-              )}
-            </button>
-          ))}
         </div>
 
         {/* MESSAGES TAB */}

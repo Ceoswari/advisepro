@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import DashboardNav from '@/app/components/DashboardNav'
+import DashboardNav, { ADMIN_NAV } from '@/app/components/DashboardNav'
 
 const YEARS = ['MS1', 'MS2', 'MS3', 'MS4']
 const SPECIALTIES = [
@@ -99,11 +99,7 @@ export default function MilestoneManagement() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      <DashboardNav navItems={[
-        { label: 'Students', href: '/dashboard/admin' },
-        { label: 'Analytics', href: '/dashboard/admin/analytics' },
-        { label: 'Milestones', href: '/dashboard/admin/milestones' },
-      ]} />
+      <DashboardNav navItems={ADMIN_NAV} />
 
       <div className="max-w-3xl mx-auto px-8 py-8">
         <div className="flex items-center justify-between mb-6">

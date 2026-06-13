@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import DashboardNav, { STUDENT_NAV } from '@/app/components/DashboardNav'
@@ -436,7 +436,7 @@ function specialtyAbbrev(name) {
 }
 
 // ─── Main dashboard ───────────────────────────────────────────────────────────
-export default function StudentDashboard() {
+function StudentDashboardContent() {
   const [profile, setProfile]               = useState(null)
   const [student, setStudent]               = useState(null)
   const [loading, setLoading]               = useState(true)
@@ -1111,5 +1111,13 @@ function LORTrackerInline({ lors, setLors, studentId }) {
         )}
       </div>
     </div>
+  )
+}
+
+export default function StudentDashboard() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-stone-50 flex items-center justify-center"><div className="text-stone-400 text-sm">Loading...</div></div>}>
+      <StudentDashboardContent />
+    </Suspense>
   )
 }

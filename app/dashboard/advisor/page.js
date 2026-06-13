@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import DashboardNav, { ADVISOR_NAV } from '@/app/components/DashboardNav'
@@ -10,7 +10,7 @@ function daysSince(dateStr) {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24))
 }
 
-export default function AdvisorDashboard() {
+function AdvisorDashboardContent() {
   const [profile, setProfile] = useState(null)
   const [students, setStudents] = useState([])
   const [lastMeetings, setLastMeetings] = useState({})
@@ -294,5 +294,13 @@ export default function AdvisorDashboard() {
         </>) /* end students tab */}
       </div>
     </div>
+  )
+}
+
+export default function AdvisorDashboard() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-stone-50 flex items-center justify-center"><div className="text-stone-400 text-sm">Loading...</div></div>}>
+      <AdvisorDashboardContent />
+    </Suspense>
   )
 }

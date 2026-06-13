@@ -234,7 +234,7 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-4">
                     <div className="text-right min-w-[72px]">
                       <p className="text-xs text-stone-400 mb-0.5">Step 1</p>
-                      {student.usmle_step1_status ? (
+                      {student.usmle_step1_status && student.usmle_step1_attempts != null ? (
                         <>
                           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${student.usmle_step1_status === 'pass' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
                             {student.usmle_step1_status === 'pass' ? 'Pass' : 'Fail'}

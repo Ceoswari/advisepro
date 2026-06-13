@@ -249,9 +249,18 @@ export default function AdminDashboard() {
                         <p className="font-medium text-stone-300 text-sm">—</p>
                       )}
                     </div>
-                    <div className="text-right min-w-[52px]">
-                      <p className="text-xs text-stone-400">Step 2</p>
-                      <p className="font-medium text-stone-900 text-sm">{student.usmle_step2_score ?? '—'}</p>
+                    <div className="text-right min-w-[72px]">
+                      <p className="text-xs text-stone-400 mb-0.5">Step 2</p>
+                      {student.usmle_step2_score && student.usmle_step2_attempts != null ? (
+                        <>
+                          <p className="font-semibold text-stone-900 text-sm">{student.usmle_step2_score}</p>
+                          <p className="text-xs text-stone-400">
+                            {student.usmle_step2_attempts === 1 ? '1 attempt' : `${student.usmle_step2_attempts} attempts`}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="font-medium text-stone-300 text-sm">—</p>
+                      )}
                     </div>
                     <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${
                       student.risk_level === 'low'    ? 'bg-emerald-100 text-emerald-700' :

@@ -23,6 +23,15 @@ const IMPORT_TYPES = [
     available: true,
   },
   {
+    id: 'step2_scores',
+    title: 'USMLE Step 2 Scores',
+    source: 'NBME',
+    description: 'Upload the NBME class Step 2 results CSV. Students are matched by first and last name. Records the score and number of attempts; best score is saved when two attempts are on file.',
+    icon: '📋',
+    href: '/dashboard/admin/import/step2',
+    available: true,
+  },
+  {
     id: 'shelf_exams',
     title: 'NBME Shelf Exams',
     source: 'NBME',

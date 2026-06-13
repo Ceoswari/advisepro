@@ -5,13 +5,21 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
 export default function AdminDashboard() {
-  const [profile, setProfile] = useState(null)
-  const [students, setStudents] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  const [profile, setProfile]       = useState(null)
+  const [students, setStudents]     = useState([])
+  const [advisors, setAdvisors]     = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [search, setSearch]         = useState('')
   const [filterRisk, setFilterRisk] = useState('')
   const [filterYear, setFilterYear] = useState('')
   const [filterSpecialty, setFilterSpecialty] = useState('')
+
+  // Bulk selection state
+  const [selected, setSelected]       = useState(new Set())
+  const [bulkAdvisor, setBulkAdvisor] = useState('')
+  const [assigning, setAssigning]     = useState(false)
+  const [assignResult, setAssignResult] = useState(null) // { count, advisor }
+
   const router = useRouter()
 
   useEffect(() => {
@@ -19,25 +27,32 @@ export default function AdminDashboard() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/login'; return }
 
-      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      const { data: studentsData } = await supabase.from('students').select('*, profiles(full_name, email)').order('created_at', { ascending: false })
+      const [
+        { data: profileData },
+        { data: studentsData },
+        { data: advisorProfiles },
+      ] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('students').select('*, profiles(full_name, email)').order('created_at', { ascending: false }),
+        supabase.from('profiles').select('id, full_name').eq('role', 'advisor').order('full_name'),
+      ])
 
       setProfile(profileData)
       setStudents(studentsData || [])
+      setAdvisors(advisorProfiles || [])
       setLoading(false)
     }
     fetchData()
   }, [])
 
   const exportCSV = () => {
-    const headers = ['Name', 'Email', 'Class Year', 'Specialty', 'Step 1 Status', 'Step 1 Score', 'Step 2 Score', 'Research', 'Volunteer Hours', 'Risk Level']
+    const headers = ['Name', 'Email', 'Class Year', 'Specialty', 'Step 1 Status', 'Step 2 Score', 'Research', 'Volunteer Hours', 'Risk Level']
     const rows = filtered.map(s => [
       s.profiles?.full_name || '',
       s.profiles?.email || '',
       s.class_year || '',
       s.specialty_interest || '',
       s.usmle_step1_status || '',
-      s.usmle_step1_score || '',
       s.usmle_step2_score || '',
       s.research_count || '',
       s.volunteer_hours || '',
@@ -54,10 +69,10 @@ export default function AdminDashboard() {
   }
 
   const riskCounts = {
-    low:    students.filter(s => s.risk_level === 'low').length,
-    medium: students.filter(s => s.risk_level === 'medium').length,
-    high:   students.filter(s => s.risk_level === 'high').length,
-    unset:  students.filter(s => !s.risk_level).length,
+    low:   students.filter(s => s.risk_level === 'low').length,
+    medium:students.filter(s => s.risk_level === 'medium').length,
+    high:  students.filter(s => s.risk_level === 'high').length,
+    unset: students.filter(s => !s.risk_level).length,
   }
 
   const classYears  = [...new Set(students.map(s => s.class_year).filter(Boolean))].sort()
@@ -72,6 +87,72 @@ export default function AdminDashboard() {
     const matchSpecialty = !filterSpecialty || s.specialty_interest === filterSpecialty
     return matchSearch && matchRisk && matchYear && matchSpecialty
   })
+
+  // ── Selection helpers ────────────────────────────────────────────────────────
+
+  const filteredIds = filtered.map(s => s.id)
+  const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selected.has(id))
+  const someFilteredSelected = filteredIds.some(id => selected.has(id))
+
+  function toggleStudent(id) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+    setAssignResult(null)
+  }
+
+  function toggleSelectAll() {
+    if (allFilteredSelected) {
+      setSelected(prev => {
+        const next = new Set(prev)
+        filteredIds.forEach(id => next.delete(id))
+        return next
+      })
+    } else {
+      setSelected(prev => {
+        const next = new Set(prev)
+        filteredIds.forEach(id => next.add(id))
+        return next
+      })
+    }
+    setAssignResult(null)
+  }
+
+  function clearSelection() {
+    setSelected(new Set())
+    setBulkAdvisor('')
+    setAssignResult(null)
+  }
+
+  // ── Bulk assign ──────────────────────────────────────────────────────────────
+
+  async function handleBulkAssign() {
+    if (!bulkAdvisor || selected.size === 0) return
+    setAssigning(true)
+    setAssignResult(null)
+
+    const rows = [...selected].map(studentId => ({
+      advisor_profile_id: bulkAdvisor,
+      student_id: studentId,
+    }))
+
+    // ignoreDuplicates so re-assigning the same advisor to a student is a no-op
+    const { error } = await supabase
+      .from('advisor_student')
+      .upsert(rows, { onConflict: 'advisor_profile_id,student_id', ignoreDuplicates: true })
+
+    const advisorName = advisors.find(a => a.id === bulkAdvisor)?.full_name || 'Advisor'
+    setAssigning(false)
+
+    if (!error) {
+      setAssignResult({ count: selected.size, advisor: advisorName })
+      clearSelection()
+    } else {
+      setAssignResult({ error: error.message })
+    }
+  }
 
   const initials = profile?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 
@@ -148,26 +229,19 @@ export default function AdminDashboard() {
 
         {/* Risk summary cards */}
         <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className={`rounded-2xl border p-5 cursor-pointer transition-all hover:shadow-md ${filterRisk === 'low' ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-stone-100'}`}
-            onClick={() => setFilterRisk(filterRisk === 'low' ? '' : 'low')}>
-            <p className="text-xs font-medium text-stone-400 uppercase tracking-wide">Low Risk</p>
-            <p className="text-3xl font-bold text-emerald-600 mt-2">{riskCounts.low}</p>
-          </div>
-          <div className={`rounded-2xl border p-5 cursor-pointer transition-all hover:shadow-md ${filterRisk === 'medium' ? 'bg-amber-50 border-amber-200' : 'bg-white border-stone-100'}`}
-            onClick={() => setFilterRisk(filterRisk === 'medium' ? '' : 'medium')}>
-            <p className="text-xs font-medium text-stone-400 uppercase tracking-wide">Medium Risk</p>
-            <p className="text-3xl font-bold text-amber-500 mt-2">{riskCounts.medium}</p>
-          </div>
-          <div className={`rounded-2xl border p-5 cursor-pointer transition-all hover:shadow-md ${filterRisk === 'high' ? 'bg-rose-50 border-rose-200' : 'bg-white border-stone-100'}`}
-            onClick={() => setFilterRisk(filterRisk === 'high' ? '' : 'high')}>
-            <p className="text-xs font-medium text-stone-400 uppercase tracking-wide">High Risk</p>
-            <p className="text-3xl font-bold text-rose-600 mt-2">{riskCounts.high}</p>
-          </div>
-          <div className={`rounded-2xl border p-5 cursor-pointer transition-all hover:shadow-md ${filterRisk === 'unset' ? 'bg-stone-100 border-stone-300' : 'bg-white border-stone-100'}`}
-            onClick={() => setFilterRisk(filterRisk === 'unset' ? '' : 'unset')}>
-            <p className="text-xs font-medium text-stone-400 uppercase tracking-wide">Not Assessed</p>
-            <p className="text-3xl font-bold text-stone-300 mt-2">{riskCounts.unset}</p>
-          </div>
+          {[
+            { label: 'Low Risk',     key: 'low',    count: riskCounts.low,    active: 'bg-emerald-50 border-emerald-200', num: 'text-emerald-600' },
+            { label: 'Medium Risk',  key: 'medium', count: riskCounts.medium, active: 'bg-amber-50 border-amber-200',   num: 'text-amber-500'   },
+            { label: 'High Risk',    key: 'high',   count: riskCounts.high,   active: 'bg-rose-50 border-rose-200',     num: 'text-rose-600'    },
+            { label: 'Not Assessed', key: 'unset',  count: riskCounts.unset,  active: 'bg-stone-100 border-stone-300',  num: 'text-stone-300'   },
+          ].map(card => (
+            <div key={card.key}
+              className={`rounded-2xl border p-5 cursor-pointer transition-all hover:shadow-md ${filterRisk === card.key ? card.active : 'bg-white border-stone-100'}`}
+              onClick={() => setFilterRisk(filterRisk === card.key ? '' : card.key)}>
+              <p className="text-xs font-medium text-stone-400 uppercase tracking-wide">{card.label}</p>
+              <p className={`text-3xl font-bold mt-2 ${card.num}`}>{card.count}</p>
+            </div>
+          ))}
         </div>
 
         {/* Filters */}
@@ -205,10 +279,64 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        {/* Assign result banner */}
+        {assignResult && !assignResult.error && (
+          <div className="mb-4 bg-emerald-50 border border-emerald-100 rounded-xl px-5 py-3 flex items-center justify-between">
+            <p className="text-sm text-emerald-700">
+              <span className="font-semibold">{assignResult.advisor}</span> assigned to {assignResult.count} student{assignResult.count !== 1 ? 's' : ''}.
+            </p>
+            <button onClick={() => setAssignResult(null)} className="text-emerald-400 hover:text-emerald-700 text-lg leading-none">✕</button>
+          </div>
+        )}
+        {assignResult?.error && (
+          <div className="mb-4 bg-rose-50 border border-rose-100 rounded-xl px-5 py-3 text-sm text-rose-700">
+            Assignment failed: {assignResult.error}
+          </div>
+        )}
+
+        {/* Bulk action bar — visible when students are selected */}
+        {selected.size > 0 && (
+          <div className="mb-4 bg-teal-600 rounded-xl px-5 py-3 flex items-center gap-4 shadow-md">
+            <span className="text-white text-sm font-medium flex-shrink-0">
+              {selected.size} student{selected.size !== 1 ? 's' : ''} selected
+            </span>
+            <div className="flex-1 flex items-center gap-3">
+              <select
+                value={bulkAdvisor}
+                onChange={e => setBulkAdvisor(e.target.value)}
+                className="flex-1 max-w-xs rounded-lg px-3 py-1.5 text-sm bg-white border-0 focus:outline-none focus:ring-2 focus:ring-white text-stone-700">
+                <option value="">Select advisor to assign…</option>
+                {advisors.map(a => (
+                  <option key={a.id} value={a.id}>{a.full_name}</option>
+                ))}
+              </select>
+              <button
+                onClick={handleBulkAssign}
+                disabled={!bulkAdvisor || assigning}
+                className="bg-white text-teal-700 font-medium text-sm px-4 py-1.5 rounded-lg hover:bg-teal-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0">
+                {assigning ? 'Assigning…' : 'Assign Advisor'}
+              </button>
+            </div>
+            <button onClick={clearSelection} className="text-teal-200 hover:text-white text-sm flex-shrink-0 transition-colors">
+              Clear selection
+            </button>
+          </div>
+        )}
+
         {/* Students table */}
         <div className="bg-white rounded-2xl shadow-sm border border-stone-100">
           <div className="px-6 py-4 border-b border-stone-100 flex justify-between items-center">
-            <h3 className="text-sm font-semibold text-stone-700">All Students</h3>
+            <div className="flex items-center gap-3">
+              {/* Select-all checkbox */}
+              <input
+                type="checkbox"
+                checked={allFilteredSelected}
+                ref={el => { if (el) el.indeterminate = someFilteredSelected && !allFilteredSelected }}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 rounded accent-teal-600 cursor-pointer"
+              />
+              <h3 className="text-sm font-semibold text-stone-700">All Students</h3>
+            </div>
             <div className="flex items-center gap-3">
               {filtered.length < students.length && (
                 <span className="text-xs text-stone-400">Showing {filtered.length} of {students.length}</span>
@@ -219,64 +347,79 @@ export default function AdminDashboard() {
               </button>
             </div>
           </div>
+
           {filtered.length === 0 ? (
             <div className="p-10 text-center text-stone-400 text-sm">
               {students.length === 0 ? 'No students yet.' : 'No students match your filters.'}
             </div>
           ) : (
             <div className="divide-y divide-stone-50">
-              {filtered.map((student) => (
-                <div key={student.id} className="px-6 py-4 flex items-center justify-between hover:bg-stone-50 transition-colors">
-                  <div className="flex-1 cursor-pointer" onClick={() => router.push(`/dashboard/admin/students/${student.id}`)}>
-                    <p className="font-medium text-stone-900">{student.profiles?.full_name}</p>
-                    <p className="text-sm text-stone-400 mt-0.5">{student.class_year} · {student.specialty_interest ?? 'No specialty'}</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right min-w-[72px]">
-                      <p className="text-xs text-stone-400 mb-0.5">Step 1</p>
-                      {student.usmle_step1_status && student.usmle_step1_attempts != null ? (
-                        <>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${student.usmle_step1_status === 'pass' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                            {student.usmle_step1_status === 'pass' ? 'Pass' : 'Fail'}
-                          </span>
-                          {student.usmle_step1_attempts != null && (
+              {filtered.map((student) => {
+                const isSelected = selected.has(student.id)
+                return (
+                  <div key={student.id}
+                    className={`px-6 py-4 flex items-center gap-4 transition-colors ${isSelected ? 'bg-teal-50' : 'hover:bg-stone-50'}`}>
+                    {/* Checkbox */}
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleStudent(student.id)}
+                      onClick={e => e.stopPropagation()}
+                      className="w-4 h-4 rounded accent-teal-600 cursor-pointer flex-shrink-0"
+                    />
+
+                    {/* Name / info — clicking navigates */}
+                    <div className="flex-1 cursor-pointer min-w-0" onClick={() => router.push(`/dashboard/admin/students/${student.id}`)}>
+                      <p className="font-medium text-stone-900">{student.profiles?.full_name}</p>
+                      <p className="text-sm text-stone-400 mt-0.5">{student.class_year} · {student.specialty_interest ?? 'No specialty'}</p>
+                    </div>
+
+                    {/* Step scores + risk + edit */}
+                    <div className="flex items-center gap-4">
+                      <div className="text-right min-w-[72px]">
+                        <p className="text-xs text-stone-400 mb-0.5">Step 1</p>
+                        {student.usmle_step1_status && student.usmle_step1_attempts != null ? (
+                          <>
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${student.usmle_step1_status === 'pass' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                              {student.usmle_step1_status === 'pass' ? 'Pass' : 'Fail'}
+                            </span>
                             <p className="text-xs text-stone-400 mt-0.5">
                               {student.usmle_step1_attempts === 1 ? '1st attempt' : `${student.usmle_step1_attempts} attempts`}
                             </p>
-                          )}
-                        </>
-                      ) : (
-                        <p className="font-medium text-stone-300 text-sm">—</p>
-                      )}
+                          </>
+                        ) : (
+                          <p className="font-medium text-stone-300 text-sm">—</p>
+                        )}
+                      </div>
+                      <div className="text-right min-w-[72px]">
+                        <p className="text-xs text-stone-400 mb-0.5">Step 2</p>
+                        {student.usmle_step2_score && student.usmle_step2_attempts != null ? (
+                          <>
+                            <p className="font-semibold text-stone-900 text-sm">{student.usmle_step2_score}</p>
+                            <p className="text-xs text-stone-400">
+                              {student.usmle_step2_attempts === 1 ? '1 attempt' : `${student.usmle_step2_attempts} attempts`}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="font-medium text-stone-300 text-sm">—</p>
+                        )}
+                      </div>
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${
+                        student.risk_level === 'low'    ? 'bg-emerald-100 text-emerald-700' :
+                        student.risk_level === 'medium' ? 'bg-amber-100 text-amber-700' :
+                        student.risk_level === 'high'   ? 'bg-rose-100 text-rose-700' :
+                        'bg-stone-100 text-stone-400'}`}>
+                        {student.risk_level ?? 'unset'}
+                      </span>
+                      <button
+                        onClick={() => router.push(`/dashboard/admin/students/${student.id}/edit`)}
+                        className="text-xs text-teal-600 hover:text-teal-800 border border-teal-200 px-2.5 py-1 rounded-lg transition-colors">
+                        Edit
+                      </button>
                     </div>
-                    <div className="text-right min-w-[72px]">
-                      <p className="text-xs text-stone-400 mb-0.5">Step 2</p>
-                      {student.usmle_step2_score && student.usmle_step2_attempts != null ? (
-                        <>
-                          <p className="font-semibold text-stone-900 text-sm">{student.usmle_step2_score}</p>
-                          <p className="text-xs text-stone-400">
-                            {student.usmle_step2_attempts === 1 ? '1 attempt' : `${student.usmle_step2_attempts} attempts`}
-                          </p>
-                        </>
-                      ) : (
-                        <p className="font-medium text-stone-300 text-sm">—</p>
-                      )}
-                    </div>
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full capitalize ${
-                      student.risk_level === 'low'    ? 'bg-emerald-100 text-emerald-700' :
-                      student.risk_level === 'medium' ? 'bg-amber-100 text-amber-700' :
-                      student.risk_level === 'high'   ? 'bg-rose-100 text-rose-700' :
-                      'bg-stone-100 text-stone-400'}`}>
-                      {student.risk_level ?? 'unset'}
-                    </span>
-                    <button
-                      onClick={() => router.push(`/dashboard/admin/students/${student.id}/edit`)}
-                      className="text-xs text-teal-600 hover:text-teal-800 border border-teal-200 px-2.5 py-1 rounded-lg transition-colors">
-                      Edit
-                    </button>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

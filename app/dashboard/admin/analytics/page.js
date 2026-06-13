@@ -6,15 +6,9 @@ import DashboardNav from '@/app/components/DashboardNav'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-const CLASS_YEARS = ['MS1', 'MS2', 'MS3', 'MS4']
-
-const LINE_COLORS = {
-  MS1: '#0d9488', // teal-600
-  MS2: '#7c3aed', // violet-600
-  MS3: '#b45309', // amber-700
-  MS4: '#0369a1', // sky-700
-  All: '#6b7280', // stone
-}
+// Palette cycles through as many graduation years as needed
+const GRAD_COLORS = ['#0d9488', '#7c3aed', '#b45309', '#0369a1', '#be185d', '#065f46', '#92400e', '#1e3a8a']
+const colorFor = (i) => GRAD_COLORS[i % GRAD_COLORS.length]
 
 function avg(arr) {
   const nums = arr.filter(v => v != null && !isNaN(v))
@@ -23,6 +17,10 @@ function avg(arr) {
 
 function pct(n, total) {
   return total ? Math.round((n / total) * 100) : 0
+}
+
+function classLabel(year) {
+  return `Class of ${year}`
 }
 
 // Sort "AY24-25" strings chronologically
@@ -56,8 +54,6 @@ function HBar({ data, total }) {
 }
 
 // ─── SVG line chart ──────────────────────────────────────────────────────────
-// series: [{ name, color, values: (number|null)[] }]
-// xLabels: string[]
 
 function LineChart({ series, xLabels }) {
   const activeSeries = series.filter(s => s.values.some(v => v != null))
@@ -95,7 +91,6 @@ function LineChart({ series, xLabels }) {
   return (
     <div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 280 }}>
-        {/* Grid */}
         {yTicks.map((v, i) => (
           <g key={i}>
             <line x1={PAD.left} y1={yPos(v)} x2={W - PAD.right} y2={yPos(v)}
@@ -105,25 +100,20 @@ function LineChart({ series, xLabels }) {
           </g>
         ))}
 
-        {/* X labels */}
         {xLabels.map((label, i) => (
           <text key={i} x={xPos(i)} y={H - 8} textAnchor="middle"
             fontSize="10" fill="#78716c">{label}</text>
         ))}
 
-        {/* X axis baseline */}
         <line x1={PAD.left} y1={H - PAD.bottom} x2={W - PAD.right} y2={H - PAD.bottom}
           stroke="#d6d3d1" strokeWidth="1" />
 
-        {/* Series */}
         {activeSeries.map((s, si) => {
           const pts = s.values
             .map((v, i) => v != null ? { x: xPos(i), y: yPos(v), v } : null)
             .filter(Boolean)
           if (pts.length === 0) return null
-
           const d = pts.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
-
           return (
             <g key={si}>
               {pts.length > 1 && (
@@ -141,7 +131,6 @@ function LineChart({ series, xLabels }) {
         })}
       </svg>
 
-      {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-2 px-1">
         {activeSeries.map(s => (
           <div key={s.name} className="flex items-center gap-1.5">
@@ -166,6 +155,26 @@ function Stat({ label, value, sub, color = 'text-stone-900' }) {
   )
 }
 
+// ─── Class filter pill bar ───────────────────────────────────────────────────
+
+function ClassFilter({ label, gradYears, value, onChange }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-stone-500 mr-1">{label}</span>
+      {['All', ...gradYears].map(yr => (
+        <button key={yr} onClick={() => onChange(yr)}
+          className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+            value === yr
+              ? 'bg-teal-600 text-white border-teal-600'
+              : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'
+          }`}>
+          {yr === 'All' ? 'All' : yr}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function Analytics() {
@@ -175,10 +184,10 @@ export default function Analytics() {
   const [notes, setNotes]         = useState([])
   const [milestones, setMilestones] = useState([])
   const [activitiesCount, setActivitiesCount] = useState(0)
-  const [grades, setGrades]       = useState([])   // course_grades rows w/ student class_year
-  const [step1Class, setStep1Class] = useState('All')
+  const [grades, setGrades]       = useState([])
+  const [step1Year, setStep1Year] = useState('All')
   const [gradeCourse, setGradeCourse] = useState('all')
-  const [gradeClass, setGradeClass]   = useState('All')
+  const [gradeYear, setGradeYear]     = useState('All')
 
   useEffect(() => {
     const fetchData = async () => {
@@ -196,7 +205,7 @@ export default function Analytics() {
         supabase.from('advising_notes').select('student_id, meeting_date'),
         supabase.from('student_milestones').select('student_id, status'),
         supabase.from('activities').select('id', { count: 'exact', head: true }),
-        supabase.from('course_grades').select('course_name, academic_year, term, course_percent, student_id, students(class_year)'),
+        supabase.from('course_grades').select('course_name, academic_year, term, course_percent, student_id, students(graduation_year)'),
       ])
 
       setStudents(studentsData || [])
@@ -211,6 +220,9 @@ export default function Analytics() {
 
   if (loading) return <div className="min-h-screen bg-stone-50 flex items-center justify-center text-stone-400">Loading…</div>
 
+  // Sorted unique graduation years across all students
+  const gradYears = [...new Set(students.map(s => s.graduation_year).filter(Boolean))].sort()
+
   // ── Overview calculations ─────────────────────────────────────────────────
 
   const total = students.length
@@ -224,15 +236,15 @@ export default function Analytics() {
   const milestoneRate = milestones.length ? pct(completedMilestones, milestones.length) : 0
 
   const riskData = [
-    { label: 'Low Risk',      value: students.filter(s => s.risk_level === 'low').length,    color: 'bg-emerald-500' },
-    { label: 'Medium Risk',   value: students.filter(s => s.risk_level === 'medium').length, color: 'bg-yellow-400' },
-    { label: 'High Risk',     value: students.filter(s => s.risk_level === 'high').length,   color: 'bg-rose-500'   },
-    { label: 'Not Assessed',  value: students.filter(s => !s.risk_level).length,             color: 'bg-stone-300'  },
+    { label: 'Low Risk',     value: students.filter(s => s.risk_level === 'low').length,    color: 'bg-emerald-500' },
+    { label: 'Medium Risk',  value: students.filter(s => s.risk_level === 'medium').length, color: 'bg-yellow-400' },
+    { label: 'High Risk',    value: students.filter(s => s.risk_level === 'high').length,   color: 'bg-rose-500'   },
+    { label: 'Not Assessed', value: students.filter(s => !s.risk_level).length,             color: 'bg-stone-300'  },
   ]
 
   const yearCounts = {}
-  students.forEach(s => { if (s.class_year) yearCounts[s.class_year] = (yearCounts[s.class_year] || 0) + 1 })
-  const yearData = CLASS_YEARS.map(y => ({ label: y, value: yearCounts[y] || 0 })).filter(d => d.value > 0)
+  students.forEach(s => { if (s.graduation_year) yearCounts[s.graduation_year] = (yearCounts[s.graduation_year] || 0) + 1 })
+  const yearData = gradYears.map(y => ({ label: String(y), value: yearCounts[y] || 0 })).filter(d => d.value > 0)
 
   const specialtyCounts = {}
   students.forEach(s => { if (s.specialty_interest) specialtyCounts[s.specialty_interest] = (specialtyCounts[s.specialty_interest] || 0) + 1 })
@@ -247,20 +259,20 @@ export default function Analytics() {
     { label: '6+ meetings',  value: students.filter(s => meetingCountMap[s.id] >= 6).length },
   ]
 
-  const riskByYear = CLASS_YEARS.map(year => {
-    const yr = students.filter(s => s.class_year === year)
-    return { label: year, total: yr.length, highRisk: yr.filter(s => s.risk_level === 'high').length }
+  const riskByYear = gradYears.map(year => {
+    const yr = students.filter(s => s.graduation_year === year)
+    return { label: String(year), total: yr.length, highRisk: yr.filter(s => s.risk_level === 'high').length }
   }).filter(d => d.total > 0)
 
   // ── Step 1 calculations ───────────────────────────────────────────────────
 
-  const step1Students = step1Class === 'All'
+  const step1Students = step1Year === 'All'
     ? students
-    : students.filter(s => s.class_year === step1Class)
+    : students.filter(s => s.graduation_year === step1Year)
 
-  const step1Tested  = step1Students.filter(s => s.usmle_step1_status && s.usmle_step1_status !== 'not_taken')
-  const step1Pass    = step1Students.filter(s => s.usmle_step1_status === 'pass')
-  const step1Fail    = step1Students.filter(s => s.usmle_step1_status === 'fail')
+  const step1Tested  = step1Students.filter(s => s.usmle_step1_attempts != null)
+  const step1Pass    = step1Students.filter(s => s.usmle_step1_status === 'pass' && s.usmle_step1_attempts != null)
+  const step1Fail    = step1Students.filter(s => s.usmle_step1_status === 'fail' && s.usmle_step1_attempts != null)
   const step1Pass1st = step1Students.filter(s => s.usmle_step1_status === 'pass' && s.usmle_step1_attempts === 1)
   const step1Pass2nd = step1Students.filter(s => s.usmle_step1_status === 'pass' && s.usmle_step1_attempts === 2)
 
@@ -268,19 +280,18 @@ export default function Analytics() {
   const step1First1stRate = step1Tested.length ? pct(step1Pass1st.length, step1Tested.length) : null
 
   const step1OutcomeData = [
-    { label: 'Pass — 1st attempt',  value: step1Pass1st.length,                        color: 'bg-emerald-500' },
-    { label: 'Pass — 2nd attempt',  value: step1Pass2nd.length,                        color: 'bg-teal-400'    },
-    { label: 'Did not pass',        value: step1Fail.length,                            color: 'bg-rose-400'    },
-    { label: 'Not yet taken',       value: step1Students.length - step1Tested.length,   color: 'bg-stone-200'   },
+    { label: 'Pass — 1st attempt', value: step1Pass1st.length,                       color: 'bg-emerald-500' },
+    { label: 'Pass — 2nd attempt', value: step1Pass2nd.length,                       color: 'bg-teal-400'    },
+    { label: 'Did not pass',       value: step1Fail.length,                           color: 'bg-rose-400'    },
+    { label: 'Not yet taken',      value: step1Students.length - step1Tested.length,  color: 'bg-stone-200'   },
   ]
 
-  // Step 1 pass rate by class year (for comparison bar)
-  const step1ByYear = CLASS_YEARS.map(yr => {
-    const yrStudents = students.filter(s => s.class_year === yr)
-    const tested     = yrStudents.filter(s => s.usmle_step1_status && s.usmle_step1_status !== 'not_taken')
-    const passed     = yrStudents.filter(s => s.usmle_step1_status === 'pass')
+  const step1ByYear = gradYears.map((yr, i) => {
+    const yrStudents = students.filter(s => s.graduation_year === yr)
+    const tested     = yrStudents.filter(s => s.usmle_step1_attempts != null)
+    const passed     = yrStudents.filter(s => s.usmle_step1_status === 'pass' && s.usmle_step1_attempts != null)
     return {
-      label: yr,
+      label: classLabel(yr),
       total: yrStudents.length,
       tested: tested.length,
       passed: passed.length,
@@ -294,25 +305,24 @@ export default function Analytics() {
 
   const gradeFiltered = grades.filter(g => {
     if (gradeCourse !== 'all' && g.course_name !== gradeCourse) return false
-    if (gradeClass !== 'All' && g.students?.class_year !== gradeClass) return false
+    if (gradeYear !== 'All' && g.students?.graduation_year !== gradeYear) return false
     return true
   })
 
   const academicYears = sortAcademicYears(grades.map(g => g.academic_year).filter(Boolean))
 
-  // Build series: one per class year (or per selected class)
-  const classesInData = gradeClass === 'All'
-    ? CLASS_YEARS.filter(yr => grades.some(g => g.students?.class_year === yr))
-    : [gradeClass]
+  const gradYearsInData = gradeYear === 'All'
+    ? gradYears.filter(yr => grades.some(g => g.students?.graduation_year === yr))
+    : [gradeYear]
 
-  const lineSeries = classesInData.map(yr => {
+  const lineSeries = gradYearsInData.map((yr, i) => {
     const values = academicYears.map(ay => {
       const rows = gradeFiltered.filter(g =>
-        g.academic_year === ay && g.students?.class_year === yr && g.course_percent != null
+        g.academic_year === ay && g.students?.graduation_year === yr && g.course_percent != null
       )
       return rows.length > 0 ? avg(rows.map(g => g.course_percent)) : null
     })
-    return { name: yr, color: LINE_COLORS[yr] || '#94a3b8', values }
+    return { name: classLabel(yr), color: colorFor(gradYears.indexOf(yr)), values }
   })
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -326,9 +336,9 @@ export default function Analytics() {
   return (
     <div className="min-h-screen bg-stone-50">
       <DashboardNav navItems={[
-        { label: 'Students',  href: '/dashboard/admin'           },
-        { label: 'Analytics', href: '/dashboard/admin/analytics' },
-        { label: 'Milestones',href: '/dashboard/admin/milestones'},
+        { label: 'Students',   href: '/dashboard/admin'           },
+        { label: 'Analytics',  href: '/dashboard/admin/analytics' },
+        { label: 'Milestones', href: '/dashboard/admin/milestones'},
       ]} />
 
       <div className="max-w-5xl mx-auto px-8 py-8">
@@ -365,9 +375,9 @@ export default function Analytics() {
                 <HBar data={riskData} total={total} />
               </div>
               <div className="bg-white rounded-2xl border border-stone-100 p-5">
-                <h3 className="text-sm font-semibold text-stone-700 mb-4">Students by Class Year</h3>
+                <h3 className="text-sm font-semibold text-stone-700 mb-4">Students by Graduation Year</h3>
                 {yearData.length === 0
-                  ? <p className="text-sm text-stone-400">No class year data yet.</p>
+                  ? <p className="text-sm text-stone-400">No graduation year data yet.</p>
                   : <HBar data={yearData.map(d => ({ ...d, color: 'bg-teal-500' }))} total={total} />
                 }
               </div>
@@ -392,13 +402,13 @@ export default function Analytics() {
               <div className="bg-white rounded-2xl border border-stone-100 p-5">
                 <h3 className="text-sm font-semibold text-stone-700 mb-4">USMLE Step 1 — Institution</h3>
                 <HBar data={[
-                  { label: 'Pass',       value: students.filter(s => s.usmle_step1_status === 'pass').length, color: 'bg-emerald-500' },
-                  { label: 'Did not pass', value: students.filter(s => s.usmle_step1_status === 'fail').length, color: 'bg-rose-400' },
-                  { label: 'Not taken',  value: students.filter(s => !s.usmle_step1_status || s.usmle_step1_status === 'not_taken').length, color: 'bg-stone-200' },
+                  { label: 'Pass',         value: students.filter(s => s.usmle_step1_status === 'pass' && s.usmle_step1_attempts != null).length, color: 'bg-emerald-500' },
+                  { label: 'Did not pass', value: students.filter(s => s.usmle_step1_status === 'fail' && s.usmle_step1_attempts != null).length, color: 'bg-rose-400' },
+                  { label: 'Not taken',    value: students.filter(s => s.usmle_step1_attempts == null).length, color: 'bg-stone-200' },
                 ]} total={total} />
               </div>
               <div className="bg-white rounded-2xl border border-stone-100 p-5">
-                <h3 className="text-sm font-semibold text-stone-700 mb-4">High Risk by Class Year</h3>
+                <h3 className="text-sm font-semibold text-stone-700 mb-4">High Risk by Graduation Year</h3>
                 {riskByYear.length === 0
                   ? <p className="text-sm text-stone-400">No data yet.</p>
                   : riskByYear.map(item => (
@@ -423,22 +433,15 @@ export default function Analytics() {
         {/* ══════ STEP 1 TAB ══════ */}
         {tab === 'step1' && (
           <div>
-            {/* Class filter */}
-            <div className="flex items-center gap-2 mb-6">
-              <span className="text-sm text-stone-500 mr-1">Class year:</span>
-              {['All', ...CLASS_YEARS].map(yr => (
-                <button key={yr} onClick={() => setStep1Class(yr)}
-                  className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all border ${
-                    step1Class === yr
-                      ? 'bg-teal-600 text-white border-teal-600'
-                      : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'
-                  }`}>
-                  {yr}
-                </button>
-              ))}
+            <div className="flex items-center gap-2 mb-6 flex-wrap">
+              <ClassFilter
+                label="Graduation year:"
+                gradYears={gradYears}
+                value={step1Year}
+                onChange={setStep1Year}
+              />
             </div>
 
-            {/* Summary stats */}
             <div className="grid grid-cols-4 gap-4 mb-8">
               <Stat label="Students in view" value={step1Students.length} />
               <Stat
@@ -461,10 +464,9 @@ export default function Analytics() {
             </div>
 
             <div className="grid grid-cols-2 gap-6 mb-6">
-              {/* Outcome breakdown */}
               <div className="bg-white rounded-2xl border border-stone-100 p-5">
                 <h3 className="text-sm font-semibold text-stone-700 mb-4">
-                  Outcome Breakdown — {step1Class === 'All' ? 'All Students' : step1Class}
+                  Outcome Breakdown — {step1Year === 'All' ? 'All Students' : classLabel(step1Year)}
                 </h3>
                 {step1Students.length === 0
                   ? <p className="text-sm text-stone-400">No students in this view.</p>
@@ -472,9 +474,8 @@ export default function Analytics() {
                 }
               </div>
 
-              {/* Pass rate by class year */}
               <div className="bg-white rounded-2xl border border-stone-100 p-5">
-                <h3 className="text-sm font-semibold text-stone-700 mb-4">Pass Rate by Class Year</h3>
+                <h3 className="text-sm font-semibold text-stone-700 mb-4">Pass Rate by Graduation Year</h3>
                 {step1ByYear.length === 0
                   ? <p className="text-sm text-stone-400">No data yet.</p>
                   : (
@@ -506,28 +507,15 @@ export default function Analytics() {
               </div>
             </div>
 
-            {/* Attempts breakdown — only where tested */}
             {step1Tested.length > 0 && (
               <div className="bg-white rounded-2xl border border-stone-100 p-5">
                 <h3 className="text-sm font-semibold text-stone-700 mb-1">Attempt Distribution</h3>
                 <p className="text-xs text-stone-400 mb-4">Among {step1Tested.length} student{step1Tested.length !== 1 ? 's' : ''} who have taken Step 1</p>
                 <div className="grid grid-cols-3 gap-4">
                   {[
-                    {
-                      label: 'Passed 1st attempt',
-                      value: step1Tested.filter(s => s.usmle_step1_status === 'pass' && s.usmle_step1_attempts === 1).length,
-                      color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-100',
-                    },
-                    {
-                      label: 'Passed 2nd attempt',
-                      value: step1Tested.filter(s => s.usmle_step1_status === 'pass' && s.usmle_step1_attempts === 2).length,
-                      color: 'text-teal-700', bg: 'bg-teal-50 border-teal-100',
-                    },
-                    {
-                      label: 'Did not pass (2 attempts)',
-                      value: step1Tested.filter(s => s.usmle_step1_status === 'fail' && s.usmle_step1_attempts === 2).length,
-                      color: 'text-rose-700', bg: 'bg-rose-50 border-rose-100',
-                    },
+                    { label: 'Passed 1st attempt',       value: step1Tested.filter(s => s.usmle_step1_status === 'pass' && s.usmle_step1_attempts === 1).length, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-100' },
+                    { label: 'Passed 2nd attempt',       value: step1Tested.filter(s => s.usmle_step1_status === 'pass' && s.usmle_step1_attempts === 2).length, color: 'text-teal-700',    bg: 'bg-teal-50 border-teal-100'       },
+                    { label: 'Did not pass (2 attempts)',value: step1Tested.filter(s => s.usmle_step1_status === 'fail' && s.usmle_step1_attempts === 2).length, color: 'text-rose-700',    bg: 'bg-rose-50 border-rose-100'       },
                   ].map(item => (
                     <div key={item.label} className={`rounded-xl border p-4 ${item.bg}`}>
                       <p className={`text-3xl font-bold ${item.color}`}>{item.value}</p>
@@ -544,7 +532,6 @@ export default function Analytics() {
         {/* ══════ GRADE TRENDS TAB ══════ */}
         {tab === 'grades' && (
           <div>
-            {/* Filters */}
             <div className="flex flex-wrap items-center gap-4 mb-6">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-stone-500">Course:</label>
@@ -556,47 +543,40 @@ export default function Analytics() {
                   {courseNames.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-stone-500">Class year:</label>
-                {['All', ...CLASS_YEARS].map(yr => (
-                  <button key={yr} onClick={() => setGradeClass(yr)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
-                      gradeClass === yr
-                        ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-white text-stone-600 border-stone-200 hover:border-stone-300'
-                    }`}>
-                    {yr}
-                  </button>
-                ))}
-              </div>
+              <ClassFilter
+                label="Graduation year:"
+                gradYears={gradYears}
+                value={gradeYear}
+                onChange={setGradeYear}
+              />
             </div>
 
-            {/* Line chart */}
             <div className="bg-white rounded-2xl border border-stone-100 p-6 mb-6">
               <div className="mb-4">
                 <h3 className="text-sm font-semibold text-stone-900">
                   Average Grade % by Academic Year
                   {gradeCourse !== 'all' && <span className="text-stone-400 font-normal"> — {gradeCourse}</span>}
                 </h3>
-                <p className="text-xs text-stone-400 mt-0.5">Each line represents a class year; hover points for exact values</p>
+                <p className="text-xs text-stone-400 mt-0.5">Each line represents a graduation class; hover points for exact values</p>
               </div>
               <LineChart series={lineSeries} xLabels={academicYears} />
             </div>
 
-            {/* Per-course summary table */}
             {courseNames.length > 0 && (
               <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
                 <div className="px-5 py-4 border-b border-stone-100">
                   <h3 className="text-sm font-semibold text-stone-900">Course Summary</h3>
-                  <p className="text-xs text-stone-400 mt-0.5">Average grade % per course per class year, across all years</p>
+                  <p className="text-xs text-stone-400 mt-0.5">Average grade % per course per graduation class, across all academic years</p>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-stone-100">
                         <th className="text-left px-5 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Course</th>
-                        {CLASS_YEARS.map(yr => (
-                          <th key={yr} className="text-right px-5 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">{yr}</th>
+                        {gradYears.map(yr => (
+                          <th key={yr} className="text-right px-5 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">
+                            {yr}
+                          </th>
                         ))}
                         <th className="text-right px-5 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Overall</th>
                       </tr>
@@ -608,8 +588,8 @@ export default function Analytics() {
                         return (
                           <tr key={course} className="border-b border-stone-50 last:border-0 hover:bg-stone-50 transition-colors">
                             <td className="px-5 py-3 font-medium text-stone-900">{course}</td>
-                            {CLASS_YEARS.map(yr => {
-                              const yrRows = courseRows.filter(g => g.students?.class_year === yr)
+                            {gradYears.map(yr => {
+                              const yrRows = courseRows.filter(g => g.students?.graduation_year === yr)
                               const yrAvg = avg(yrRows.map(g => g.course_percent).filter(v => v != null))
                               return (
                                 <td key={yr} className="px-5 py-3 text-right tabular-nums text-stone-700">

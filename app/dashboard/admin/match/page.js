@@ -98,7 +98,13 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
 
   const [aForm, setAForm] = useState({ ...blank })
   const [sForm, setSForm] = useState({ ...blankS })
+  const [localRisk, setLocalRisk] = useState(assessment?.risk_level || 'low')
   const [saving, setSaving] = useState(false)
+
+  // Keep localRisk in sync when the assessment prop changes from outside
+  useEffect(() => {
+    setLocalRisk(assessment?.risk_level || 'low')
+  }, [assessment?.risk_level])
 
   useEffect(() => {
     setAForm({
@@ -124,12 +130,16 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
     })
   }, [student?.id, assessment?.id])
 
-  const specialty   = student?.specialty_interest || ''
-  const step2       = student?.usmle_step2_score
-  const mean        = SPECIALTY_MEANS[specialty]
-  const delta       = step2 != null && mean ? step2 - mean : null
-  const currentRisk = assessment?.risk_level || 'low'
-  const suggested   = autoScore({ ...student, ...sForm })
+  const specialty = student?.specialty_interest || ''
+  const step2     = student?.usmle_step2_score
+  const mean      = SPECIALTY_MEANS[specialty]
+  const delta     = step2 != null && mean ? step2 - mean : null
+  const suggested = autoScore({ ...student, ...sForm })
+
+  const handleRiskChange = (val) => {
+    setLocalRisk(val)        // immediate visual update
+    onRiskChange(student.id, val)  // persist to DB + parent state
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -173,20 +183,20 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
           <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Match Risk Level</p>
           <div className="flex flex-wrap gap-2">
             {Object.entries(RISK_CFG).map(([val, cfg]) => (
-              <button key={val} onClick={() => onRiskChange(student.id, val)}
+              <button key={val} onClick={() => handleRiskChange(val)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all
-                  ${currentRisk === val
+                  ${localRisk === val
                     ? `${cfg.bg} ${cfg.text} ${cfg.border} ring-2 ring-offset-1 ring-current`
                     : 'bg-white text-stone-500 border-stone-200 hover:border-stone-300'}`}>
                 {cfg.label}
               </button>
             ))}
           </div>
-          {suggested !== currentRisk && (
+          {suggested !== localRisk && (
             <div className="mt-2 text-xs text-amber-600 flex items-center gap-1">
               <span>⚡</span>
               <span>Auto-score suggests <strong>{RISK_CFG[suggested]?.label}</strong></span>
-              <button onClick={() => onRiskChange(student.id, suggested)} className="ml-1 underline hover:no-underline">Apply</button>
+              <button onClick={() => handleRiskChange(suggested)} className="ml-1 underline hover:no-underline">Apply</button>
             </div>
           )}
         </div>

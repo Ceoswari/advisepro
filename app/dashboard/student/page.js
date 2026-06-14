@@ -442,6 +442,12 @@ function StudentDashboardContent() {
   const [loading, setLoading]               = useState(true)
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab]           = useState(() => searchParams.get('tab') || 'overview')
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab) setActiveTab(tab)
+    else setActiveTab('overview')
+  }, [searchParams])
   const [milestones, setMilestones]         = useState([])
   const [openYears, setOpenYears]           = useState({})
   const [activitiesCount, setActivitiesCount] = useState(0)

@@ -442,6 +442,8 @@ function StudentDashboardContent() {
   const [loading, setLoading]               = useState(true)
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab]           = useState(() => searchParams.get('tab') || 'overview')
+  const [seenMilestoneCount, setSeenMilestoneCount] = useState(() => parseInt(localStorage.getItem('seenMilestoneCount') || '0'))
+  const [seenGradeCount, setSeenGradeCount]         = useState(() => parseInt(localStorage.getItem('seenGradeCount') || '0'))
 
   useEffect(() => {
     const tab = searchParams.get('tab')
@@ -551,6 +553,32 @@ function StudentDashboardContent() {
     return () => supabase.removeChannel(channel)
   }, [myProfileId, advisorProfile])
 
+  // Clear milestones badge when milestones tab is viewed
+  useEffect(() => {
+    if (activeTab !== 'milestones' || milestones.length === 0) return
+    const pending = milestones.filter(m => m.status !== 'completed').length
+    localStorage.setItem('seenMilestoneCount', pending.toString())
+    setSeenMilestoneCount(pending)
+  }, [activeTab, milestones])
+
+  // Clear grades badge when grades tab is viewed
+  useEffect(() => {
+    if (activeTab !== 'grades' || grades.length === 0) return
+    localStorage.setItem('seenGradeCount', grades.length.toString())
+    setSeenGradeCount(grades.length)
+  }, [activeTab, grades])
+
+  // Mark messages as read when messages tab is opened
+  useEffect(() => {
+    if (activeTab !== 'messages' || !myProfileId) return
+    const unread = messages.filter(m => m.sender_id !== myProfileId && !m.read_at)
+    if (unread.length === 0) return
+    const ids = unread.map(m => m.id)
+    const now = new Date().toISOString()
+    supabase.from('messages').update({ read_at: now }).in('id', ids)
+    setMessages(prev => prev.map(m => ids.includes(m.id) ? { ...m, read_at: now } : m))
+  }, [activeTab, messages, myProfileId])
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !advisorProfile || sendingMsg) return
     setSendingMsg(true)
@@ -569,6 +597,8 @@ function StudentDashboardContent() {
 
   const unreadMessages = messages.filter(m => m.sender_id !== myProfileId && !m.read_at).length
   const pendingMilestones = milestones.filter(m => m.status !== 'completed').length
+  const milestoneBadge = Math.max(0, pendingMilestones - seenMilestoneCount)
+  const gradesBadge = Math.max(0, grades.length - seenGradeCount)
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -576,8 +606,8 @@ function StudentDashboardContent() {
         activeTab={activeTab}
         navItems={[
           { label: 'Overview',   href: '/dashboard/student', tab: 'overview',   isDefault: true },
-          { label: 'Milestones', href: '/dashboard/student', tab: 'milestones', badge: pendingMilestones },
-          { label: 'Grades',     href: '/dashboard/student', tab: 'grades',     badge: grades.length },
+          { label: 'Milestones', href: '/dashboard/student', tab: 'milestones', badge: milestoneBadge },
+          { label: 'Grades',     href: '/dashboard/student', tab: 'grades',     badge: gradesBadge },
           { label: 'Messages',   href: '/dashboard/student', tab: 'messages',   badge: unreadMessages },
         ]}
       >

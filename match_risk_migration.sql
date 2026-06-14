@@ -9,7 +9,7 @@ ALTER TABLE students
 -- One assessment per student per match season
 CREATE TABLE IF NOT EXISTS match_risk_assessments (
   id                     uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  student_id             integer REFERENCES students(id) ON DELETE CASCADE,
+  student_id             uuid REFERENCES students(id) ON DELETE CASCADE,
   season                 integer NOT NULL,
   risk_level             text NOT NULL DEFAULT 'low',
   parallel_plan          text,

@@ -6,11 +6,12 @@ import { supabase } from '@/lib/supabase'
 // ── Shared nav item sets ────────────────────────────────────────────────────
 
 export const ADMIN_NAV = [
-  { label: 'Students',    href: '/dashboard/admin',            exact: true   },
-  { label: 'Analytics',   href: '/dashboard/admin/analytics',  exact: true   },
-  { label: 'Milestones',  href: '/dashboard/admin/milestones', exact: true   },
-  { label: 'Import Data', href: '/dashboard/admin/import',     exact: false  },
-  { label: 'Audit Log',   href: '/dashboard/admin/audit',      exact: true   },
+  { label: 'Students',    href: '/dashboard/admin',             exact: true   },
+  { label: 'Match Risk',  href: '/dashboard/admin/match',       exact: true   },
+  { label: 'Analytics',   href: '/dashboard/admin/analytics',   exact: true   },
+  { label: 'Milestones',  href: '/dashboard/admin/milestones',  exact: true   },
+  { label: 'Import Data', href: '/dashboard/admin/import',      exact: false  },
+  { label: 'Audit Log',   href: '/dashboard/admin/audit',       exact: true   },
 ]
 
 export const ADVISOR_NAV = [

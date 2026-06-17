@@ -41,29 +41,18 @@ function autoScore(student) {
   const delta     = step2 != null ? step2 - mean : null
 
   if ((student.usmle_step1_attempts || 0) > 1) score += 4
-
   if (delta !== null) {
     if      (delta < -20) score += 5
     else if (delta < -10) score += 3
     else if (delta <   0) score += 1
     else if (delta >= 10) score -= 1
-  } else {
-    score += 1
-  }
-
-  if (COMPETITIVE.has(specialty)) {
-    score += 2
-    if (delta !== null && delta < -5) score += 2
-  }
-
+  } else { score += 1 }
+  if (COMPETITIVE.has(specialty)) { score += 2; if (delta !== null && delta < -5) score += 2 }
   if (student.poor_academic_history) score += 3
-
   const mspeMap = { Excellent: -1, 'Very Good': 0, Good: 1, Satisfactory: 2, Concerning: 4 }
   score += mspeMap[student.mspe_ranking] ?? 1
-
   const hpMap = { Honors: -1, 'High Pass': 0, Pass: 1, No: 2 }
   score += hpMap[student.hp_in_specialty] ?? 1
-
   if (student.gap_in_school) score += 2
   if (student.aoa) score -= 1
 
@@ -73,12 +62,15 @@ function autoScore(student) {
   return 'very_high'
 }
 
+// ─── helpers ──────────────────────────────────────────────────────────────────
+const toLines  = arr  => (arr || []).join('\n')
+const toArr    = text => text.split('\n').map(s => s.trim()).filter(Boolean)
+
 // ─── RiskPill ─────────────────────────────────────────────────────────────────
 function RiskPill({ level, onClick }) {
   const cfg = RISK_CFG[level] || RISK_CFG.low
   return (
-    <button
-      onClick={e => { e.stopPropagation(); onClick?.() }}
+    <button onClick={e => { e.stopPropagation(); onClick?.() }}
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap transition-opacity
         ${cfg.bg} ${cfg.text} ${cfg.border} ${onClick ? 'hover:opacity-75 cursor-pointer' : 'cursor-default'}`}>
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
@@ -89,37 +81,39 @@ function RiskPill({ level, onClick }) {
 
 // ─── Drawer ───────────────────────────────────────────────────────────────────
 function Drawer({ student, assessment, history, onClose, onRiskChange, onSave }) {
-  const blank = {
+  const [aForm, setAForm] = useState({
     parallel_plan: '', soap_plan: '', interview_count: '', prelim_interview_count: '',
     geographic_preference: '', away_rotation: false, release_of_information: false,
-    matched_program: '', matched_specialty: '', rank_of_match: '', soap_outcome: false, notes: '',
-  }
-  const blankS = { mspe_ranking: '', aoa: false, hp_in_specialty: '', poor_academic_history: '', gap_in_school: '' }
-
-  const [aForm, setAForm] = useState({ ...blank })
-  const [sForm, setSForm] = useState({ ...blankS })
+    matched_program: '', matched_specialty: '', rank_of_match: '', soap_outcome: false,
+    notes: '', interview_programs_text: '', rank_order_list_text: '',
+  })
+  const [sForm, setSForm] = useState({
+    mspe_ranking: '', aoa: false, hp_in_specialty: '', poor_academic_history: '', gap_in_school: '',
+  })
   const [localRisk, setLocalRisk] = useState(assessment?.risk_level || 'low')
-  const [saving, setSaving] = useState(false)
+  const [saving,    setSaving]    = useState(false)
+  const [saveMsg,   setSaveMsg]   = useState(null) // 'saved' | 'error: ...'
 
-  // Keep localRisk in sync when the assessment prop changes from outside
-  useEffect(() => {
-    setLocalRisk(assessment?.risk_level || 'low')
-  }, [assessment?.risk_level])
+  // Sync localRisk when parent updates (e.g. from table inline change)
+  useEffect(() => { setLocalRisk(assessment?.risk_level || 'low') }, [assessment?.risk_level])
 
+  // Reset form when student changes
   useEffect(() => {
     setAForm({
-      parallel_plan:          assessment?.parallel_plan          ?? '',
-      soap_plan:              assessment?.soap_plan              ?? '',
-      interview_count:        assessment?.interview_count        ?? '',
-      prelim_interview_count: assessment?.prelim_interview_count ?? '',
-      geographic_preference:  assessment?.geographic_preference  ?? '',
-      away_rotation:          assessment?.away_rotation          ?? false,
-      release_of_information: assessment?.release_of_information ?? false,
-      matched_program:        assessment?.matched_program        ?? '',
-      matched_specialty:      assessment?.matched_specialty      ?? '',
-      rank_of_match:          assessment?.rank_of_match          ?? '',
-      soap_outcome:           assessment?.soap_outcome           ?? false,
-      notes:                  assessment?.notes                  ?? '',
+      parallel_plan:           assessment?.parallel_plan          ?? '',
+      soap_plan:               assessment?.soap_plan              ?? '',
+      interview_count:         assessment?.interview_count        ?? '',
+      prelim_interview_count:  assessment?.prelim_interview_count ?? '',
+      geographic_preference:   assessment?.geographic_preference  ?? '',
+      away_rotation:           assessment?.away_rotation          ?? false,
+      release_of_information:  assessment?.release_of_information ?? false,
+      matched_program:         assessment?.matched_program        ?? '',
+      matched_specialty:       assessment?.matched_specialty      ?? '',
+      rank_of_match:           assessment?.rank_of_match          ?? '',
+      soap_outcome:            assessment?.soap_outcome           ?? false,
+      notes:                   assessment?.notes                  ?? '',
+      interview_programs_text: toLines(assessment?.interview_programs),
+      rank_order_list_text:    toLines(assessment?.rank_order_list),
     })
     setSForm({
       mspe_ranking:          student?.mspe_ranking          ?? '',
@@ -128,6 +122,7 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
       poor_academic_history: student?.poor_academic_history ?? '',
       gap_in_school:         student?.gap_in_school         ?? '',
     })
+    setSaveMsg(null)
   }, [student?.id, assessment?.id])
 
   const specialty = student?.specialty_interest || ''
@@ -137,24 +132,33 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
   const suggested = autoScore({ ...student, ...sForm })
 
   const handleRiskChange = (val) => {
-    setLocalRisk(val)        // immediate visual update
-    onRiskChange(student.id, val)  // persist to DB + parent state
+    setLocalRisk(val)
+    onRiskChange(student.id, val)
   }
 
   const handleSave = async () => {
     setSaving(true)
-    await onSave(student.id, aForm, sForm)
+    setSaveMsg(null)
+    const result = await onSave(student.id, aForm, sForm, localRisk)
     setSaving(false)
+    if (result?.error) {
+      setSaveMsg(`error: ${result.error}`)
+    } else {
+      setSaveMsg('saved')
+      setTimeout(() => setSaveMsg(null), 2500)
+    }
   }
 
   const fmtDate = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
 
+  // ROL preview — numbered list with matched entry highlighted
+  const rolLines   = toArr(aForm.rank_order_list_text)
+  const matchRank  = parseInt(aForm.rank_of_match) || 0
+
   const Lbl = ({ c }) => <label className="text-xs text-stone-500 mb-1 block">{c}</label>
   const Inp = (p) => <input {...p} className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
   const Sel = ({ children, ...p }) => (
-    <select {...p} className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
-      {children}
-    </select>
+    <select {...p} className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">{children}</select>
   )
   const Chk = ({ label, checked, onChange }) => (
     <label className="flex items-center gap-2 cursor-pointer">
@@ -162,9 +166,12 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
       <span className="text-sm text-stone-700">{label}</span>
     </label>
   )
+  const TA = (p) => (
+    <textarea {...p} className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none" />
+  )
 
   return (
-    <div className="w-[420px] flex-shrink-0 border-l border-stone-200 bg-white flex flex-col overflow-hidden">
+    <div className="w-[440px] flex-shrink-0 border-l border-stone-200 bg-white flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-5 py-4 border-b border-stone-100 flex items-center justify-between flex-shrink-0">
         <div>
@@ -303,11 +310,60 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
           </div>
           <div className="flex gap-6">
             <Chk label="Away Rotation" checked={aForm.away_rotation} onChange={e => setAForm(f => ({ ...f, away_rotation: e.target.checked }))} />
-            <Chk label="ROI Released" checked={aForm.release_of_information} onChange={e => setAForm(f => ({ ...f, release_of_information: e.target.checked }))} />
+            <Chk label="ROI Released"  checked={aForm.release_of_information} onChange={e => setAForm(f => ({ ...f, release_of_information: e.target.checked }))} />
           </div>
         </div>
 
-        {/* Match outcome */}
+        {/* Interview Invitations */}
+        <div className="px-5 py-4 space-y-3">
+          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Interview Invitations</p>
+          <p className="text-xs text-stone-400 -mt-1">One program per line</p>
+          <TA
+            rows={5}
+            value={aForm.interview_programs_text}
+            onChange={e => setAForm(f => ({ ...f, interview_programs_text: e.target.value }))}
+            placeholder={"Johns Hopkins Internal Medicine\nPenn Internal Medicine\nCooper University Hospital\n..."}
+          />
+          {toArr(aForm.interview_programs_text).length > 0 && (
+            <p className="text-xs text-stone-400">{toArr(aForm.interview_programs_text).length} programs listed</p>
+          )}
+        </div>
+
+        {/* Rank Order List */}
+        <div className="px-5 py-4 space-y-3">
+          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Rank Order List (ROL)</p>
+          <p className="text-xs text-stone-400 -mt-1">One program per line, in rank order</p>
+          <TA
+            rows={6}
+            value={aForm.rank_order_list_text}
+            onChange={e => setAForm(f => ({ ...f, rank_order_list_text: e.target.value }))}
+            placeholder={"#1 Johns Hopkins\n#2 Penn\n#3 Cooper University Hospital\n..."}
+          />
+
+          {/* Visual ROL preview with match highlighted */}
+          {rolLines.length > 0 && (
+            <div className="bg-stone-50 rounded-xl overflow-hidden">
+              {rolLines.map((prog, i) => {
+                const rank    = i + 1
+                const isMatch = matchRank === rank
+                return (
+                  <div key={i}
+                    className={`flex items-center gap-3 px-3 py-2 text-xs border-b border-stone-100 last:border-0
+                      ${isMatch ? 'bg-emerald-50' : ''}`}>
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-xs
+                      ${isMatch ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'}`}>
+                      {rank}
+                    </span>
+                    <span className={`flex-1 truncate ${isMatch ? 'text-emerald-700 font-semibold' : 'text-stone-600'}`}>{prog}</span>
+                    {isMatch && <span className="text-emerald-500 font-semibold text-xs">MATCHED</span>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Match Outcome */}
         <div className="px-5 py-4 space-y-3">
           <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Match Outcome</p>
           <div><Lbl c="Matched Program" />
@@ -327,19 +383,43 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
             </div>
           </div>
           <Chk label="Matched via SOAP" checked={aForm.soap_outcome} onChange={e => setAForm(f => ({ ...f, soap_outcome: e.target.checked }))} />
+
+          {/* Outcome summary card */}
+          {aForm.matched_program && (
+            <div className={`rounded-xl p-3 border ${aForm.soap_outcome ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+              <p className={`text-xs font-semibold ${aForm.soap_outcome ? 'text-amber-700' : 'text-emerald-700'}`}>
+                {aForm.soap_outcome ? 'Matched via SOAP' : 'Matched'}
+                {aForm.rank_of_match ? ` at rank #${aForm.rank_of_match} of ${rolLines.length || '?'}` : ''}
+              </p>
+              <p className={`text-sm font-bold mt-0.5 ${aForm.soap_outcome ? 'text-amber-900' : 'text-emerald-900'}`}>
+                {aForm.matched_program}
+              </p>
+              {aForm.matched_specialty && (
+                <p className={`text-xs mt-0.5 ${aForm.soap_outcome ? 'text-amber-600' : 'text-emerald-600'}`}>
+                  {aForm.matched_specialty}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Notes */}
         <div className="px-5 py-4">
           <Lbl c="Advisor Notes" />
-          <textarea value={aForm.notes} onChange={e => setAForm(f => ({ ...f, notes: e.target.value }))}
-            rows={3} placeholder="Additional notes..."
-            className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none" />
+          <TA rows={3} value={aForm.notes}
+            onChange={e => setAForm(f => ({ ...f, notes: e.target.value }))}
+            placeholder="Additional notes..." />
         </div>
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-stone-100 flex-shrink-0">
+      <div className="px-5 py-4 border-t border-stone-100 flex-shrink-0 space-y-2">
+        {saveMsg === 'saved' && (
+          <p className="text-xs text-emerald-600 text-center font-medium">✓ Saved successfully</p>
+        )}
+        {saveMsg?.startsWith('error') && (
+          <p className="text-xs text-rose-600 text-center">{saveMsg}</p>
+        )}
         <button onClick={handleSave} disabled={saving}
           className="w-full bg-teal-600 text-white py-2 rounded-xl text-sm font-medium hover:bg-teal-700 disabled:opacity-50 transition-colors">
           {saving ? 'Saving...' : 'Save Changes'}
@@ -350,8 +430,8 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-const now = new Date()
-const DEFAULT_SEASON = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear()
+const _now = new Date()
+const DEFAULT_SEASON = _now.getMonth() >= 6 ? _now.getFullYear() + 1 : _now.getFullYear()
 
 export default function MatchRiskPage() {
   const [students,    setStudents]    = useState([])
@@ -403,14 +483,14 @@ export default function MatchRiskPage() {
   }, [season])
 
   const updateRisk = async (studentId, newRisk) => {
-    const { data: upserted } = await supabase
+    const { data: upserted, error } = await supabase
       .from('match_risk_assessments')
       .upsert(
         { student_id: studentId, season, risk_level: newRisk, updated_at: new Date().toISOString(), updated_by: adminId },
         { onConflict: 'student_id,season' }
       )
       .select().single()
-    if (!upserted) return
+    if (error || !upserted) return
 
     await supabase.from('match_risk_history').insert({
       assessment_id: upserted.id, risk_level: newRisk,
@@ -425,8 +505,9 @@ export default function MatchRiskPage() {
     setRiskOpen(null)
   }
 
-  const saveAssessment = async (studentId, aForm, sForm) => {
-    await supabase.from('students').update({
+  // saveAssessment now receives localRisk from the drawer so it always saves what the drawer shows
+  const saveAssessment = async (studentId, aForm, sForm, riskLevel) => {
+    const { error: studentErr } = await supabase.from('students').update({
       mspe_ranking:          sForm.mspe_ranking          || null,
       aoa:                   sForm.aoa,
       hp_in_specialty:       sForm.hp_in_specialty       || null,
@@ -434,22 +515,24 @@ export default function MatchRiskPage() {
       gap_in_school:         sForm.gap_in_school         || null,
     }).eq('id', studentId)
 
-    const { data: upserted } = await supabase
+    if (studentErr) return { error: studentErr.message }
+
+    const { data: upserted, error: assessErr } = await supabase
       .from('match_risk_assessments')
       .upsert({
         student_id:             studentId,
         season,
-        risk_level:             assessments[studentId]?.risk_level || 'low',
+        risk_level:             riskLevel || 'low',
         parallel_plan:          aForm.parallel_plan          || null,
         soap_plan:              aForm.soap_plan              || null,
-        interview_count:        aForm.interview_count  !== '' ? parseInt(aForm.interview_count)        : null,
+        interview_count:        aForm.interview_count        !== '' ? parseInt(aForm.interview_count)        : null,
         prelim_interview_count: aForm.prelim_interview_count !== '' ? parseInt(aForm.prelim_interview_count) : null,
         geographic_preference:  aForm.geographic_preference  || null,
         away_rotation:          aForm.away_rotation,
         release_of_information: aForm.release_of_information,
         matched_program:        aForm.matched_program        || null,
         matched_specialty:      aForm.matched_specialty      || null,
-        rank_of_match:          aForm.rank_of_match !== '' ? parseInt(aForm.rank_of_match) : null,
+        rank_of_match:          aForm.rank_of_match          !== '' ? parseInt(aForm.rank_of_match)          : null,
         soap_outcome:           aForm.soap_outcome,
         notes:                  aForm.notes                  || null,
         updated_at:             new Date().toISOString(),
@@ -457,13 +540,26 @@ export default function MatchRiskPage() {
       }, { onConflict: 'student_id,season' })
       .select().single()
 
+    if (assessErr) return { error: assessErr.message }
+
     if (upserted) {
+      // interview_programs / rank_order_list require migration_2.sql — update separately so
+      // a missing column doesn't block the rest of the save
+      const programs = toArr(aForm.interview_programs_text)
+      const rol      = toArr(aForm.rank_order_list_text)
+      if (programs.length || rol.length) {
+        await supabase.from('match_risk_assessments').update({
+          interview_programs: programs,
+          rank_order_list:    rol,
+        }).eq('id', upserted.id)
+      }
+
       setAssessments(prev => ({ ...prev, [studentId]: upserted }))
       setStudents(prev => prev.map(s => s.id === studentId ? { ...s, ...sForm } : s))
     }
+    return { success: true }
   }
 
-  // Summary counts
   const riskCounts = { low: 0, moderate: 0, high: 0, very_high: 0 }
   for (const s of students) {
     const r = assessments[s.id]?.risk_level || 'low'
@@ -483,8 +579,6 @@ export default function MatchRiskPage() {
   const selectedHistory    = history[selectedId] || []
 
   const seasons = [DEFAULT_SEASON + 1, DEFAULT_SEASON, DEFAULT_SEASON - 1]
-
-  // Table cell style helpers
   const th = 'border-b border-stone-100 bg-stone-50 px-4 py-3 text-left text-xs font-semibold text-stone-400 uppercase tracking-wide whitespace-nowrap'
   const td = (extra = '') => `border-b border-stone-100 px-4 py-3 text-sm ${extra}`
 
@@ -499,7 +593,6 @@ export default function MatchRiskPage() {
             <h2 className="text-xl font-bold text-stone-900">Match Risk</h2>
             <p className="text-stone-400 text-sm mt-0.5">{students.length} MS4 students · {season} season</p>
           </div>
-          {/* Season toggle */}
           <div className="flex items-center gap-1 bg-stone-100 rounded-xl p-1">
             {seasons.map(y => (
               <button key={y} onClick={() => setSeason(y)}
@@ -511,7 +604,6 @@ export default function MatchRiskPage() {
           </div>
         </div>
 
-        {/* Risk filter pills + search */}
         <div className="mt-3 flex items-center gap-3 flex-wrap">
           {Object.entries(RISK_CFG).map(([val, cfg]) => (
             <button key={val} onClick={() => setFilterRisk(filterRisk === val ? '' : val)}
@@ -530,15 +622,13 @@ export default function MatchRiskPage() {
 
       {/* Table + Drawer */}
       <div className="flex-1 flex overflow-hidden">
-
-        {/* Scrollable table */}
         <div className="flex-1 overflow-auto">
           {loading ? (
             <div className="p-16 text-center text-stone-400 text-sm">Loading match data...</div>
           ) : students.length === 0 ? (
             <div className="p-16 text-center">
               <p className="text-stone-400 text-sm">No MS4 students found.</p>
-              <p className="text-stone-300 text-xs mt-1">Students with class year set to MS4 will appear here.</p>
+              <p className="text-stone-300 text-xs mt-1">Students with class year MS4 will appear here.</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-16 text-center text-stone-400 text-sm">No students match your filters.</div>
@@ -546,26 +636,25 @@ export default function MatchRiskPage() {
             <table className="w-full border-collapse" style={{ minWidth: 1060 }}>
               <thead>
                 <tr>
-                  <th className={`${th} sticky left-0 z-20 bg-stone-50`}       style={{ minWidth: 200 }}>Student</th>
-                  <th className={`${th} sticky z-20 bg-stone-50`}              style={{ left: 200, minWidth: 160 }}>Specialty</th>
-                  <th className={`${th} sticky z-20 bg-stone-50 border-r border-stone-200`} style={{ left: 360, minWidth: 140 }}>Risk Level</th>
-                  <th className={th} style={{ minWidth: 80 }}>Step 1</th>
+                  <th className={`${th} sticky left-0 z-20 bg-stone-50`}                          style={{ minWidth: 200 }}>Student</th>
+                  <th className={`${th} sticky z-20 bg-stone-50`}                                 style={{ left: 200, minWidth: 160 }}>Specialty</th>
+                  <th className={`${th} sticky z-20 bg-stone-50 border-r border-stone-200`}       style={{ left: 360, minWidth: 140 }}>Risk Level</th>
+                  <th className={th} style={{ minWidth: 80  }}>Step 1</th>
                   <th className={th} style={{ minWidth: 130 }}>Step 2 / Mean</th>
                   <th className={th} style={{ minWidth: 100 }}>HP / Honors</th>
                   <th className={th} style={{ minWidth: 110 }}>MSPE</th>
-                  <th className={th} style={{ minWidth: 80 }}>Acad Hx</th>
-                  <th className={th} style={{ minWidth: 90 }}>Gap</th>
+                  <th className={th} style={{ minWidth: 80  }}>Acad Hx</th>
+                  <th className={th} style={{ minWidth: 90  }}>Gap</th>
                   <th className={th} style={{ minWidth: 150 }}>Parallel Plan</th>
-                  <th className={th} style={{ minWidth: 90 }}>Interviews</th>
-                  <th className={th} style={{ minWidth: 80 }}>SOAP</th>
-                  <th className={th} style={{ minWidth: 180 }}>Match Result</th>
+                  <th className={th} style={{ minWidth: 90  }}>Interviews</th>
+                  <th className={th} style={{ minWidth: 80  }}>SOAP</th>
+                  <th className={th} style={{ minWidth: 200 }}>Match Result</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(student => {
                   const asmt      = assessments[student.id]
                   const risk      = asmt?.risk_level || 'low'
-                  const cfg       = RISK_CFG[risk]
                   const isSel     = selectedId === student.id
                   const step2     = student.usmle_step2_score
                   const mean      = SPECIALTY_MEANS[student.specialty_interest]
@@ -578,13 +667,11 @@ export default function MatchRiskPage() {
                       onClick={() => setSelectedId(isSel ? null : student.id)}
                       className={`cursor-pointer transition-colors ${isSel ? '' : 'hover:bg-stone-50'}`}>
 
-                      {/* Name — sticky */}
                       <td className={`sticky left-0 z-10 border-b border-stone-100 px-4 py-3 ${cellBg}`}>
                         <p className="text-sm font-medium text-stone-900 whitespace-nowrap">{student.profiles?.full_name}</p>
                         {student.aoa && <span className="text-xs text-amber-600 font-semibold">AOA</span>}
                       </td>
 
-                      {/* Specialty — sticky */}
                       <td className={`sticky z-10 border-b border-stone-100 px-4 py-3 ${cellBg}`} style={{ left: 200 }}>
                         <p className="text-sm text-stone-700 whitespace-nowrap">{student.specialty_interest || '—'}</p>
                         {COMPETITIVE.has(student.specialty_interest) && (
@@ -592,13 +679,11 @@ export default function MatchRiskPage() {
                         )}
                       </td>
 
-                      {/* Risk — sticky, editable */}
                       <td className={`sticky z-10 border-b border-stone-100 border-r border-stone-200 px-4 py-3 ${cellBg}`} style={{ left: 360 }}>
                         <div className="relative flex items-center gap-1">
                           <RiskPill level={risk} onClick={() => setRiskOpen(riskOpen === student.id ? null : student.id)} />
                           {suggested !== risk && (
-                            <span title={`Auto-score suggests: ${RISK_CFG[suggested]?.label}`}
-                              className="text-amber-400 text-xs cursor-help leading-none">⚡</span>
+                            <span title={`Auto-score: ${RISK_CFG[suggested]?.label}`} className="text-amber-400 text-xs cursor-help">⚡</span>
                           )}
                           {riskOpen === student.id && (
                             <div className="absolute z-50 top-full left-0 mt-1 bg-white rounded-xl border border-stone-200 shadow-xl p-1 min-w-[150px]"
@@ -615,7 +700,6 @@ export default function MatchRiskPage() {
                         </div>
                       </td>
 
-                      {/* Step 1 */}
                       <td className={td()}>
                         <span className={`font-medium ${(student.usmle_step1_attempts || 0) > 1 ? 'text-orange-600' : 'text-stone-700'}`}>
                           {(student.usmle_step1_attempts || 0) > 1 ? 'F/P' : student.usmle_step1_status === 'pass' ? 'Pass' : '—'}
@@ -625,7 +709,6 @@ export default function MatchRiskPage() {
                         )}
                       </td>
 
-                      {/* Step 2 / Mean */}
                       <td className={td()}>
                         {step2 ? (
                           <span>
@@ -644,18 +727,16 @@ export default function MatchRiskPage() {
                         ) : <span className="text-stone-300">—</span>}
                       </td>
 
-                      {/* HP / Honors */}
                       <td className={td()}>
                         <span className={
-                          student.hp_in_specialty === 'Honors'     ? 'text-emerald-600 font-semibold' :
-                          student.hp_in_specialty === 'High Pass'  ? 'text-emerald-500' :
-                          student.hp_in_specialty === 'Pass'       ? 'text-stone-600' :
-                          student.hp_in_specialty === 'No'         ? 'text-rose-500' : 'text-stone-300'}>
+                          student.hp_in_specialty === 'Honors'    ? 'text-emerald-600 font-semibold' :
+                          student.hp_in_specialty === 'High Pass' ? 'text-emerald-500' :
+                          student.hp_in_specialty === 'Pass'      ? 'text-stone-600' :
+                          student.hp_in_specialty === 'No'        ? 'text-rose-500' : 'text-stone-300'}>
                           {student.hp_in_specialty || '—'}
                         </span>
                       </td>
 
-                      {/* MSPE */}
                       <td className={td()}>
                         <span className={
                           student.mspe_ranking === 'Excellent'    ? 'text-emerald-600 font-semibold' :
@@ -668,7 +749,6 @@ export default function MatchRiskPage() {
                         </span>
                       </td>
 
-                      {/* Acad Hx */}
                       <td className={td('text-center')}>
                         {student.poor_academic_history
                           ? <span title={student.poor_academic_history}
@@ -676,19 +756,16 @@ export default function MatchRiskPage() {
                           : <span className="text-stone-200">—</span>}
                       </td>
 
-                      {/* Gap */}
                       <td className={td()}>
                         <span className={student.gap_in_school ? 'text-orange-600 text-xs' : 'text-stone-300'}>
                           {student.gap_in_school || '—'}
                         </span>
                       </td>
 
-                      {/* Parallel Plan */}
                       <td className={td()}>
                         <span className="text-stone-600 text-xs">{asmt?.parallel_plan || '—'}</span>
                       </td>
 
-                      {/* Interviews */}
                       <td className={td()}>
                         {asmt?.interview_count != null ? (
                           <span>
@@ -704,7 +781,6 @@ export default function MatchRiskPage() {
                         ) : <span className="text-stone-300">—</span>}
                       </td>
 
-                      {/* SOAP */}
                       <td className={td('text-center')}>
                         {asmt?.soap_outcome
                           ? <span className="text-xs bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-medium">SOAP</span>
@@ -713,12 +789,15 @@ export default function MatchRiskPage() {
                           : <span className="text-stone-300">—</span>}
                       </td>
 
-                      {/* Match Result */}
                       <td className={td()}>
                         {asmt?.matched_program ? (
                           <div>
-                            <p className="text-stone-900 font-medium text-xs truncate max-w-[170px]">{asmt.matched_program}</p>
-                            {asmt.matched_specialty && <p className="text-stone-400 text-xs">{asmt.matched_specialty}</p>}
+                            <p className="text-stone-900 font-medium text-xs truncate max-w-[190px]">{asmt.matched_program}</p>
+                            <p className="text-stone-400 text-xs">
+                              {asmt.matched_specialty || ''}
+                              {asmt.rank_of_match ? ` · rank #${asmt.rank_of_match}` : ''}
+                              {asmt.soap_outcome ? ' · SOAP' : ''}
+                            </p>
                           </div>
                         ) : <span className="text-stone-300">—</span>}
                       </td>
@@ -730,7 +809,6 @@ export default function MatchRiskPage() {
           )}
         </div>
 
-        {/* Side drawer */}
         {selectedId && selectedStudent && (
           <Drawer
             student={selectedStudent}
@@ -743,7 +821,6 @@ export default function MatchRiskPage() {
         )}
       </div>
 
-      {/* Click-outside to close risk picker */}
       {riskOpen && <div className="fixed inset-0 z-40" onClick={() => setRiskOpen(null)} />}
     </div>
   )

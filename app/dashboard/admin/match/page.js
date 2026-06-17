@@ -85,7 +85,7 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
     parallel_plan: '', soap_plan: '', interview_count: '', prelim_interview_count: '',
     geographic_preference: '', away_rotation: false, release_of_information: false,
     matched_program: '', matched_specialty: '', rank_of_match: '', soap_outcome: false,
-    notes: '', interview_programs_text: '', rank_order_list_text: '',
+    notes: '', applied_programs_text: '', interview_programs_text: '', rank_order_list_text: '',
   })
   const [sForm, setSForm] = useState({
     mspe_ranking: '', aoa: false, hp_in_specialty: '', poor_academic_history: '', gap_in_school: '',
@@ -112,6 +112,7 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
       rank_of_match:           assessment?.rank_of_match          ?? '',
       soap_outcome:            assessment?.soap_outcome           ?? false,
       notes:                   assessment?.notes                  ?? '',
+      applied_programs_text:   toLines(assessment?.applied_programs),
       interview_programs_text: toLines(assessment?.interview_programs),
       rank_order_list_text:    toLines(assessment?.rank_order_list),
     })
@@ -314,6 +315,21 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
           </div>
         </div>
 
+        {/* Applied Programs */}
+        <div className="px-5 py-4 space-y-3">
+          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Programs Applied To</p>
+          <p className="text-xs text-stone-400 -mt-1">One program per line (ERAS applications)</p>
+          <TA
+            rows={5}
+            value={aForm.applied_programs_text}
+            onChange={e => setAForm(f => ({ ...f, applied_programs_text: e.target.value }))}
+            placeholder={"Johns Hopkins Internal Medicine\nPenn Internal Medicine\nCooper University Hospital\n..."}
+          />
+          {toArr(aForm.applied_programs_text).length > 0 && (
+            <p className="text-xs text-stone-400">{toArr(aForm.applied_programs_text).length} programs applied</p>
+          )}
+        </div>
+
         {/* Interview Invitations */}
         <div className="px-5 py-4 space-y-3">
           <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Interview Invitations</p>
@@ -325,7 +341,7 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
             placeholder={"Johns Hopkins Internal Medicine\nPenn Internal Medicine\nCooper University Hospital\n..."}
           />
           {toArr(aForm.interview_programs_text).length > 0 && (
-            <p className="text-xs text-stone-400">{toArr(aForm.interview_programs_text).length} programs listed</p>
+            <p className="text-xs text-stone-400">{toArr(aForm.interview_programs_text).length} interviews received</p>
           )}
         </div>
 
@@ -548,12 +564,14 @@ export default function MatchRiskPage() {
     if (assessErr) return { error: assessErr.message }
 
     if (upserted) {
-      // interview_programs / rank_order_list require migration_2.sql — update separately so
+      // applied/interview/rol columns require migration_4.sql — update separately so
       // a missing column doesn't block the rest of the save
-      const programs = toArr(aForm.interview_programs_text)
-      const rol      = toArr(aForm.rank_order_list_text)
-      if (programs.length || rol.length) {
+      const applied   = toArr(aForm.applied_programs_text)
+      const programs  = toArr(aForm.interview_programs_text)
+      const rol       = toArr(aForm.rank_order_list_text)
+      if (applied.length || programs.length || rol.length) {
         await supabase.from('match_risk_assessments').update({
+          applied_programs:   applied,
           interview_programs: programs,
           rank_order_list:    rol,
         }).eq('id', upserted.id)

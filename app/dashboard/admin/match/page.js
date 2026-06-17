@@ -94,8 +94,8 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
   const [saving,    setSaving]    = useState(false)
   const [saveMsg,   setSaveMsg]   = useState(null) // 'saved' | 'error: ...'
 
-  // Sync localRisk when parent updates (e.g. from table inline change)
-  useEffect(() => { setLocalRisk(assessment?.risk_level || 'low') }, [assessment?.risk_level])
+  // Sync localRisk whenever the student changes OR the saved risk changes
+  useEffect(() => { setLocalRisk(assessment?.risk_level || 'low') }, [student?.id, assessment?.risk_level])
 
   // Reset form when student changes
   useEffect(() => {
@@ -444,6 +444,7 @@ export default function MatchRiskPage() {
   const [riskOpen,    setRiskOpen]    = useState(null)
   const [filterRisk,  setFilterRisk]  = useState('')
   const [search,      setSearch]      = useState('')
+  const [pageError,   setPageError]   = useState(null)
 
   useEffect(() => {
     const load = async () => {
@@ -483,6 +484,7 @@ export default function MatchRiskPage() {
   }, [season])
 
   const updateRisk = async (studentId, newRisk) => {
+    setPageError(null)
     const { data: upserted, error } = await supabase
       .from('match_risk_assessments')
       .upsert(
@@ -490,7 +492,10 @@ export default function MatchRiskPage() {
         { onConflict: 'student_id,season' }
       )
       .select().single()
-    if (error || !upserted) return
+    if (error || !upserted) {
+      setPageError(error?.message || 'Failed to update risk — check migrations ran in Supabase')
+      return
+    }
 
     await supabase.from('match_risk_history').insert({
       assessment_id: upserted.id, risk_level: newRisk,
@@ -585,6 +590,14 @@ export default function MatchRiskPage() {
   return (
     <div className="h-screen flex flex-col bg-stone-50">
       <DashboardNav navItems={ADMIN_NAV} />
+
+      {/* Error banner */}
+      {pageError && (
+        <div className="bg-rose-50 border-b border-rose-200 px-8 py-3 flex items-center justify-between flex-shrink-0">
+          <p className="text-rose-700 text-sm font-medium">⚠ {pageError}</p>
+          <button onClick={() => setPageError(null)} className="text-rose-400 hover:text-rose-700 text-lg leading-none">×</button>
+        </div>
+      )}
 
       {/* Sub-header */}
       <div className="bg-white border-b border-stone-100 px-8 py-4 flex-shrink-0">

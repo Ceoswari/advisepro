@@ -819,7 +819,7 @@ export default function MatchRiskPage() {
           ) : filtered.length === 0 ? (
             <div className="p-16 text-center text-stone-400 text-sm">No students match your filters.</div>
           ) : (
-            <table className="w-full border-collapse" style={{ minWidth: 1060 }}>
+            <table className="w-full border-collapse" style={{ minWidth: 1800 }}>
               <thead>
                 <tr>
                   <th className={`${th} sticky left-0 z-20 bg-stone-50`}                    style={{ minWidth: 200 }}>Student</th>

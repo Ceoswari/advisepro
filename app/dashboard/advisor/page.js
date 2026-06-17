@@ -96,13 +96,13 @@ function AdvisorDashboardContent() {
     medium: students.filter(s => s.risk_level === 'medium').length,
     high:   students.filter(s => s.risk_level === 'high').length,
   }
-  const classYears = [...new Set(students.map(s => s.class_year).filter(Boolean))].sort()
+  const classYears = [...new Set(students.map(s => s.graduation_year).filter(Boolean))].sort()
 
   const filtered = students.filter(s => {
     const name = s.profiles?.full_name?.toLowerCase() || ''
     const matchSearch    = !search || name.includes(search.toLowerCase()) || (s.specialty_interest || '').toLowerCase().includes(search.toLowerCase())
     const matchRisk      = !filterRisk || s.risk_level === filterRisk
-    const matchYear      = !filterYear || s.class_year === filterYear
+    const matchYear      = !filterYear || String(s.graduation_year) === String(filterYear)
     const matchAttention = !showAttentionOnly || needsAttention(s)
     return matchSearch && matchRisk && matchYear && matchAttention
   })
@@ -230,7 +230,7 @@ function AdvisorDashboardContent() {
           <select value={filterYear} onChange={e => setFilterYear(e.target.value)}
             className="border border-stone-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500">
             <option value="">All Years</option>
-            {classYears.map(y => <option key={y}>{y}</option>)}
+            {classYears.map(y => <option key={y} value={y}>Class of {y}</option>)}
           </select>
           {(search || filterRisk || filterYear || showAttentionOnly) && (
             <button onClick={() => { setSearch(''); setFilterRisk(''); setFilterYear(''); setShowAttentionOnly(false) }}

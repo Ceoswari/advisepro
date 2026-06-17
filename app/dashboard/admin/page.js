@@ -77,7 +77,7 @@ export default function AdminDashboard() {
     unset: students.filter(s => !s.risk_level).length,
   }
 
-  const classYears  = [...new Set(students.map(s => s.class_year).filter(Boolean))].sort()
+  const classYears  = [...new Set(students.map(s => s.graduation_year).filter(Boolean))].sort()
   const specialties = [...new Set(students.map(s => s.specialty_interest).filter(Boolean))].sort()
 
   const filtered = students.filter(s => {
@@ -85,7 +85,7 @@ export default function AdminDashboard() {
     const email = s.profiles?.email?.toLowerCase() || ''
     const matchSearch    = !search || name.includes(search.toLowerCase()) || email.includes(search.toLowerCase()) || (s.specialty_interest || '').toLowerCase().includes(search.toLowerCase())
     const matchRisk      = !filterRisk || s.risk_level === filterRisk || (filterRisk === 'unset' && !s.risk_level)
-    const matchYear      = !filterYear || s.class_year === filterYear
+    const matchYear      = !filterYear || String(s.graduation_year) === String(filterYear)
     const matchSpecialty = !filterSpecialty || s.specialty_interest === filterSpecialty
     return matchSearch && matchRisk && matchYear && matchSpecialty
   })
@@ -231,7 +231,7 @@ export default function AdminDashboard() {
           <select value={filterYear} onChange={e => setFilterYear(e.target.value)}
             className="border border-stone-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500">
             <option value="">All Years</option>
-            {classYears.map(y => <option key={y}>{y}</option>)}
+            {classYears.map(y => <option key={y} value={y}>Class of {y}</option>)}
           </select>
           <select value={filterSpecialty} onChange={e => setFilterSpecialty(e.target.value)}
             className="border border-stone-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500">

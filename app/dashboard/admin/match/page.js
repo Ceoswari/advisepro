@@ -423,10 +423,10 @@ function Drawer({ student, assessment, history, mode, onClose, onRiskChange, onS
       case 'overview':
         return (
           <div className="divide-y divide-stone-100">
-            <SectionRisk />
-            <SectionExams />
-            <SectionAcademic />
-            <SectionParallel />
+            {SectionRisk()}
+            {SectionExams()}
+            {SectionAcademic()}
+            {SectionParallel()}
           </div>
         )
       case 'hp':
@@ -467,13 +467,13 @@ function Drawer({ student, assessment, history, mode, onClose, onRiskChange, onS
           </div>
         )
       case 'parallel':
-        return <SectionParallel />
+        return SectionParallel()
       case 'interviews':
-        return <SectionInterviews />
+        return SectionInterviews()
       case 'soap':
-        return <SectionSOAP />
+        return SectionSOAP()
       case 'match':
-        return <SectionMatch />
+        return SectionMatch()
       default:
         return null
     }

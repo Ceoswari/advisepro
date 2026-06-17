@@ -32,6 +32,14 @@ const RISK_CFG = {
 const MSPE_OPTIONS = ['Excellent', 'Very Good', 'Good', 'Satisfactory', 'Concerning']
 const HP_OPTIONS   = ['Honors', 'High Pass', 'Pass', 'No']
 
+const SIGNAL_OPTIONS = [
+  { value: 'none',   label: 'No Signal', icon: '' },
+  { value: 'silver', label: 'Silver',    icon: '🥈' },
+  { value: 'gold',   label: 'Gold',      icon: '🥇' },
+]
+
+const signalLabel = (v) => SIGNAL_OPTIONS.find(s => s.value === v) || SIGNAL_OPTIONS[0]
+
 const MODE_LABELS = {
   overview:   'Student Overview',
   hp:         'HP / Honors',
@@ -111,7 +119,7 @@ function Drawer({ student, assessment, history, mode, onClose, onRiskChange, onS
     parallel_plan: '', soap_plan: '', interview_count: '', prelim_interview_count: '',
     geographic_preference: '', away_rotation: false, release_of_information: false,
     matched_program: '', matched_specialty: '', rank_of_match: '', soap_outcome: false,
-    notes: '', applied_programs_text: '', interview_programs_text: '', rank_order_list_text: '',
+    notes: '', applied_programs_data: [], interview_programs_text: '', rank_order_list_text: '',
   })
   const [sForm, setSForm] = useState({
     mspe_ranking: '', aoa: false, hp_in_specialty: '', poor_academic_history: '', gap_in_school: '',
@@ -140,7 +148,7 @@ function Drawer({ student, assessment, history, mode, onClose, onRiskChange, onS
       rank_of_match:           assessment?.rank_of_match          ?? '',
       soap_outcome:            assessment?.soap_outcome           ?? false,
       notes:                   assessment?.notes                  ?? '',
-      applied_programs_text:   toLines(assessment?.applied_programs),
+      applied_programs_data:   assessment?.applied_programs_data || [],
       interview_programs_text: toLines(assessment?.interview_programs),
       rank_order_list_text:    toLines(assessment?.rank_order_list),
     })
@@ -287,10 +295,81 @@ function Drawer({ student, assessment, history, mode, onClose, onRiskChange, onS
   )
 
   const SectionInterviews = () => {
-    const appliedList   = toArr(aForm.applied_programs_text)
-    const inviteList    = toArr(aForm.interview_programs_text)
+    const inviteList = toArr(aForm.interview_programs_text)
+    const applied    = aForm.applied_programs_data
+
+    const addProgram = () =>
+      setAForm(f => ({ ...f, applied_programs_data: [...f.applied_programs_data, { program: '', signal: 'none' }] }))
+
+    const updateProgram = (i, field, val) =>
+      setAForm(f => {
+        const next = [...f.applied_programs_data]
+        next[i] = { ...next[i], [field]: val }
+        return { ...f, applied_programs_data: next }
+      })
+
+    const removeProgram = (i) =>
+      setAForm(f => ({ ...f, applied_programs_data: f.applied_programs_data.filter((_, idx) => idx !== i) }))
+
+    const goldCount   = applied.filter(p => p.signal === 'gold').length
+    const silverCount = applied.filter(p => p.signal === 'silver').length
+
     return (
       <div className="divide-y divide-stone-100">
+        {/* Programs Applied To */}
+        <div className="px-5 py-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Programs Applied To</p>
+              {applied.length > 0 && (
+                <p className="text-xs text-stone-400 mt-0.5">
+                  {applied.length} programs
+                  {goldCount > 0 && <span className="ml-1">· {goldCount} 🥇 gold</span>}
+                  {silverCount > 0 && <span className="ml-1">· {silverCount} 🥈 silver</span>}
+                </p>
+              )}
+            </div>
+            <button onClick={addProgram}
+              className="text-xs text-teal-600 hover:text-teal-700 font-medium border border-teal-200 px-2.5 py-1 rounded-lg hover:bg-teal-50 transition-colors">
+              + Add
+            </button>
+          </div>
+
+          {applied.length === 0 && (
+            <button onClick={addProgram}
+              className="w-full border-2 border-dashed border-stone-200 rounded-xl py-4 text-xs text-stone-400 hover:border-teal-300 hover:text-teal-500 transition-colors">
+              Click to add programs applied
+            </button>
+          )}
+
+          <div className="space-y-2">
+            {applied.map((entry, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <input
+                  value={entry.program}
+                  onChange={e => updateProgram(i, 'program', e.target.value)}
+                  placeholder="Program name..."
+                  className="flex-1 border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-0"
+                />
+                <select
+                  value={entry.signal}
+                  onChange={e => updateProgram(i, 'signal', e.target.value)}
+                  className={`border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 flex-shrink-0 w-32
+                    ${entry.signal === 'gold'   ? 'border-amber-300 bg-amber-50 text-amber-700' :
+                      entry.signal === 'silver' ? 'border-slate-300 bg-slate-50 text-slate-600' :
+                      'border-stone-200 text-stone-500'}`}>
+                  {SIGNAL_OPTIONS.map(s => (
+                    <option key={s.value} value={s.value}>{s.icon ? `${s.icon} ${s.label}` : s.label}</option>
+                  ))}
+                </select>
+                <button onClick={() => removeProgram(i)}
+                  className="text-stone-300 hover:text-rose-500 transition-colors text-lg leading-none flex-shrink-0">×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Interview Counts */}
         <div className="px-5 py-4 space-y-3">
           <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Interview Counts</p>
           <div className="grid grid-cols-2 gap-2">
@@ -304,14 +383,8 @@ function Drawer({ student, assessment, history, mode, onClose, onRiskChange, onS
             </div>
           </div>
         </div>
-        <div className="px-5 py-4 space-y-3">
-          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Programs Applied To</p>
-          <p className="text-xs text-stone-400 -mt-1">One program per line (ERAS applications)</p>
-          <TA rows={5} value={aForm.applied_programs_text}
-            onChange={e => setAForm(f => ({ ...f, applied_programs_text: e.target.value }))}
-            placeholder={"Johns Hopkins\nPenn Medicine\nCooper University Hospital\n..."} />
-          {appliedList.length > 0 && <p className="text-xs text-stone-400">{appliedList.length} programs applied</p>}
-        </div>
+
+        {/* Interview Invitations */}
         <div className="px-5 py-4 space-y-3">
           <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Interview Invitations</p>
           <p className="text-xs text-stone-400 -mt-1">One program per line</p>
@@ -321,7 +394,7 @@ function Drawer({ student, assessment, history, mode, onClose, onRiskChange, onS
           {inviteList.length > 0 && (
             <p className="text-xs text-stone-400">
               {inviteList.length} invitations
-              {appliedList.length > 0 && ` (${Math.round(inviteList.length / appliedList.length * 100)}% of applications)`}
+              {applied.length > 0 && ` (${Math.round(inviteList.length / applied.length * 100)}% of applications)`}
             </p>
           )}
         </div>
@@ -640,21 +713,21 @@ export default function MatchRiskPage() {
 
     if (assessErr) return { error: assessErr.message }
 
-    const applied  = toArr(aForm.applied_programs_text)
-    const programs = toArr(aForm.interview_programs_text)
-    const rol      = toArr(aForm.rank_order_list_text)
+    const appliedData = aForm.applied_programs_data || []
+    const programs    = toArr(aForm.interview_programs_text)
+    const rol         = toArr(aForm.rank_order_list_text)
 
-    // Save array columns separately (require migration_4) — non-fatal
+    // Save array/jsonb columns separately (require migration_4/5) — non-fatal
     await supabase.from('match_risk_assessments').update({
-      applied_programs:   applied,
-      interview_programs: programs,
-      rank_order_list:    rol,
+      applied_programs_data: appliedData,
+      interview_programs:    programs,
+      rank_order_list:       rol,
     }).eq('id', upserted.id)
 
-    // Update state immediately with ALL saved data including arrays
+    // Update state immediately with ALL saved data
     setAssessments(prev => ({
       ...prev,
-      [studentId]: { ...upserted, applied_programs: applied, interview_programs: programs, rank_order_list: rol },
+      [studentId]: { ...upserted, applied_programs_data: appliedData, interview_programs: programs, rank_order_list: rol },
     }))
     setStudents(prev => prev.map(s => s.id === studentId ? { ...s, ...sForm } : s))
 
@@ -759,6 +832,7 @@ export default function MatchRiskPage() {
                   <th className={th} style={{ minWidth: 100 }}>Acad Hx</th>
                   <th className={th} style={{ minWidth: 100 }}>Gap</th>
                   <th className={th} style={{ minWidth: 150 }}>Parallel Plan</th>
+                  <th className={th} style={{ minWidth: 110 }}>Applied</th>
                   <th className={th} style={{ minWidth: 100 }}>Interviews</th>
                   <th className={th} style={{ minWidth: 80  }}>SOAP</th>
                   <th className={th} style={{ minWidth: 200 }}>Match Result</th>
@@ -898,6 +972,27 @@ export default function MatchRiskPage() {
                       {/* Parallel Plan */}
                       <td className={cellClass('parallel')} onClick={e => clickCell(student.id, 'parallel', e)}>
                         <span className="text-stone-600 text-xs">{asmt?.parallel_plan || '—'}</span>
+                      </td>
+
+                      {/* Applied Programs */}
+                      <td className={cellClass('interviews')} onClick={e => clickCell(student.id, 'interviews', e)}>
+                        {asmt?.applied_programs_data?.length > 0 ? (() => {
+                          const data   = asmt.applied_programs_data
+                          const gold   = data.filter(p => p.signal === 'gold').length
+                          const silver = data.filter(p => p.signal === 'silver').length
+                          return (
+                            <div>
+                              <span className="font-semibold text-stone-700">{data.length}</span>
+                              <span className="text-xs text-stone-400 ml-1">programs</span>
+                              {(gold > 0 || silver > 0) && (
+                                <p className="text-xs mt-0.5 text-stone-400">
+                                  {gold > 0 && <span>🥇{gold}</span>}
+                                  {silver > 0 && <span className="ml-1">🥈{silver}</span>}
+                                </p>
+                              )}
+                            </div>
+                          )
+                        })() : <span className="text-stone-300">—</span>}
                       </td>
 
                       {/* Interviews */}

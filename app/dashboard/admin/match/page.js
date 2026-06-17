@@ -32,6 +32,17 @@ const RISK_CFG = {
 const MSPE_OPTIONS = ['Excellent', 'Very Good', 'Good', 'Satisfactory', 'Concerning']
 const HP_OPTIONS   = ['Honors', 'High Pass', 'Pass', 'No']
 
+const MODE_LABELS = {
+  overview:   'Student Overview',
+  hp:         'HP / Honors',
+  mspe:       'MSPE Ranking',
+  acad:       'Academic History',
+  parallel:   'Parallel Plan',
+  interviews: 'Interview Data',
+  soap:       'SOAP',
+  match:      'Match Outcome',
+}
+
 // ─── Auto-score ───────────────────────────────────────────────────────────────
 function autoScore(student) {
   let score = 0
@@ -62,9 +73,8 @@ function autoScore(student) {
   return 'very_high'
 }
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
-const toLines  = arr  => (arr || []).join('\n')
-const toArr    = text => text.split('\n').map(s => s.trim()).filter(Boolean)
+const toLines = arr  => (arr || []).join('\n')
+const toArr   = text => text.split('\n').map(s => s.trim()).filter(Boolean)
 
 // ─── RiskPill ─────────────────────────────────────────────────────────────────
 function RiskPill({ level, onClick }) {
@@ -79,8 +89,24 @@ function RiskPill({ level, onClick }) {
   )
 }
 
+// ─── Shared input primitives ──────────────────────────────────────────────────
+const Lbl = ({ c }) => <label className="text-xs text-stone-500 mb-1 block">{c}</label>
+const Inp = (p) => <input {...p} className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+const Sel = ({ children, ...p }) => (
+  <select {...p} className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">{children}</select>
+)
+const Chk = ({ label, checked, onChange }) => (
+  <label className="flex items-center gap-2 cursor-pointer">
+    <input type="checkbox" checked={!!checked} onChange={onChange} className="rounded text-teal-600" />
+    <span className="text-sm text-stone-700">{label}</span>
+  </label>
+)
+const TA = (p) => (
+  <textarea {...p} className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none" />
+)
+
 // ─── Drawer ───────────────────────────────────────────────────────────────────
-function Drawer({ student, assessment, history, onClose, onRiskChange, onSave }) {
+function Drawer({ student, assessment, history, mode, onClose, onRiskChange, onSave }) {
   const [aForm, setAForm] = useState({
     parallel_plan: '', soap_plan: '', interview_count: '', prelim_interview_count: '',
     geographic_preference: '', away_rotation: false, release_of_information: false,
@@ -92,12 +118,14 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
   })
   const [localRisk, setLocalRisk] = useState(assessment?.risk_level || 'low')
   const [saving,    setSaving]    = useState(false)
-  const [saveMsg,   setSaveMsg]   = useState(null) // 'saved' | 'error: ...'
+  const [saveMsg,   setSaveMsg]   = useState(null)
 
-  // Sync localRisk whenever the student changes OR the saved risk changes
-  useEffect(() => { setLocalRisk(assessment?.risk_level || 'low') }, [student?.id, assessment?.risk_level])
+  // Reset localRisk whenever student or saved value changes
+  useEffect(() => {
+    setLocalRisk(assessment?.risk_level || 'low')
+  }, [student?.id, assessment?.risk_level])
 
-  // Reset form when student changes
+  // Reset forms when student changes
   useEffect(() => {
     setAForm({
       parallel_plan:           assessment?.parallel_plan          ?? '',
@@ -126,11 +154,14 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
     setSaveMsg(null)
   }, [student?.id, assessment?.id])
 
-  const specialty = student?.specialty_interest || ''
-  const step2     = student?.usmle_step2_score
-  const mean      = SPECIALTY_MEANS[specialty]
-  const delta     = step2 != null && mean ? step2 - mean : null
-  const suggested = autoScore({ ...student, ...sForm })
+  const specialty  = student?.specialty_interest || ''
+  const step2      = student?.usmle_step2_score
+  const mean       = SPECIALTY_MEANS[specialty]
+  const delta      = step2 != null && mean ? step2 - mean : null
+  const suggested  = autoScore({ ...student, ...sForm })
+  const rolLines   = toArr(aForm.rank_order_list_text)
+  const matchRank  = parseInt(aForm.rank_of_match) || 0
+  const fmtDate    = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
 
   const handleRiskChange = (val) => {
     setLocalRisk(val)
@@ -150,26 +181,303 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
     }
   }
 
-  const fmtDate = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+  // ── Section renderers ───────────────────────────────────────────────────────
+  const SectionRisk = () => (
+    <div className="px-5 py-4">
+      <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Match Risk Level</p>
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(RISK_CFG).map(([val, cfg]) => (
+          <button key={val} onClick={() => handleRiskChange(val)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all
+              ${localRisk === val
+                ? `${cfg.bg} ${cfg.text} ${cfg.border} ring-2 ring-offset-1 ring-current`
+                : 'bg-white text-stone-500 border-stone-200 hover:border-stone-300'}`}>
+            {cfg.label}
+          </button>
+        ))}
+      </div>
+      {suggested !== localRisk && (
+        <div className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+          <span>⚡</span>
+          <span>Auto-score suggests <strong>{RISK_CFG[suggested]?.label}</strong></span>
+          <button onClick={() => handleRiskChange(suggested)} className="ml-1 underline hover:no-underline">Apply</button>
+        </div>
+      )}
+    </div>
+  )
 
-  // ROL preview — numbered list with matched entry highlighted
-  const rolLines   = toArr(aForm.rank_order_list_text)
-  const matchRank  = parseInt(aForm.rank_of_match) || 0
+  const SectionExams = () => (
+    <div className="px-5 py-4">
+      <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Exam Scores</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-stone-50 rounded-xl p-3">
+          <p className="text-xs text-stone-400">Step 1</p>
+          <p className={`text-sm font-bold mt-0.5 ${(student?.usmle_step1_attempts || 0) > 1 ? 'text-orange-600' : 'text-stone-900'}`}>
+            {(student?.usmle_step1_attempts || 0) > 1
+              ? `F→P (${student.usmle_step1_attempts}×)`
+              : student?.usmle_step1_status === 'pass' ? 'Pass (1×)' : '—'}
+          </p>
+        </div>
+        <div className="bg-stone-50 rounded-xl p-3">
+          <p className="text-xs text-stone-400">Step 2{mean ? ` (mean ${mean})` : ''}</p>
+          <p className={`text-sm font-bold mt-0.5 ${
+            delta === null ? 'text-stone-400' :
+            delta < -20 ? 'text-rose-600' : delta < -10 ? 'text-orange-500' :
+            delta < 0 ? 'text-yellow-600' : 'text-emerald-600'}`}>
+            {step2 ?? '—'}
+            {delta !== null && <span className="text-xs font-normal ml-1 opacity-70">({delta >= 0 ? '+' : ''}{delta})</span>}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
 
-  const Lbl = ({ c }) => <label className="text-xs text-stone-500 mb-1 block">{c}</label>
-  const Inp = (p) => <input {...p} className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
-  const Sel = ({ children, ...p }) => (
-    <select {...p} className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">{children}</select>
+  const SectionAcademic = () => (
+    <div className="px-5 py-4 space-y-3">
+      <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Academic Profile</p>
+      <div><Lbl c="MSPE Ranking" />
+        <Sel value={sForm.mspe_ranking} onChange={e => setSForm(f => ({ ...f, mspe_ranking: e.target.value }))}>
+          <option value="">Select...</option>
+          {MSPE_OPTIONS.map(o => <option key={o}>{o}</option>)}
+        </Sel>
+      </div>
+      <div><Lbl c="HP / Honors in Desired Specialty" />
+        <Sel value={sForm.hp_in_specialty} onChange={e => setSForm(f => ({ ...f, hp_in_specialty: e.target.value }))}>
+          <option value="">Select...</option>
+          {HP_OPTIONS.map(o => <option key={o}>{o}</option>)}
+        </Sel>
+      </div>
+      <div><Lbl c="Academic Performance Issues" />
+        <Inp value={sForm.poor_academic_history}
+          onChange={e => setSForm(f => ({ ...f, poor_academic_history: e.target.value }))}
+          placeholder="e.g. Remediation M2, M3 surgery failure..." />
+      </div>
+      <div><Lbl c="Gap in Medical School" />
+        <Inp value={sForm.gap_in_school}
+          onChange={e => setSForm(f => ({ ...f, gap_in_school: e.target.value }))}
+          placeholder="e.g. 1 year educational, research SSR..." />
+      </div>
+      <Chk label="AOA Member" checked={sForm.aoa} onChange={e => setSForm(f => ({ ...f, aoa: e.target.checked }))} />
+    </div>
   )
-  const Chk = ({ label, checked, onChange }) => (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input type="checkbox" checked={!!checked} onChange={onChange} className="rounded text-teal-600" />
-      <span className="text-sm text-stone-700">{label}</span>
-    </label>
+
+  const SectionParallel = () => (
+    <div className="px-5 py-4 space-y-3">
+      <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Parallel Plan</p>
+      <div><Lbl c="Parallel Plan Specialty" />
+        <Inp value={aForm.parallel_plan}
+          onChange={e => setAForm(f => ({ ...f, parallel_plan: e.target.value }))}
+          placeholder="e.g. Internal Medicine..." />
+      </div>
+      <div><Lbl c="SOAP Contingency Plan" />
+        <Inp value={aForm.soap_plan}
+          onChange={e => setAForm(f => ({ ...f, soap_plan: e.target.value }))}
+          placeholder="Plan if unmatched..." />
+      </div>
+      <div><Lbl c="Geographic Preference" />
+        <Inp value={aForm.geographic_preference}
+          onChange={e => setAForm(f => ({ ...f, geographic_preference: e.target.value }))}
+          placeholder="e.g. Mid-Atlantic, Northeast..." />
+      </div>
+      <div className="flex gap-6">
+        <Chk label="Away Rotation" checked={aForm.away_rotation} onChange={e => setAForm(f => ({ ...f, away_rotation: e.target.checked }))} />
+        <Chk label="ROI Released"  checked={aForm.release_of_information} onChange={e => setAForm(f => ({ ...f, release_of_information: e.target.checked }))} />
+      </div>
+    </div>
   )
-  const TA = (p) => (
-    <textarea {...p} className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none" />
+
+  const SectionInterviews = () => {
+    const appliedList   = toArr(aForm.applied_programs_text)
+    const inviteList    = toArr(aForm.interview_programs_text)
+    return (
+      <div className="divide-y divide-stone-100">
+        <div className="px-5 py-4 space-y-3">
+          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Interview Counts</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div><Lbl c="Primary Interviews" />
+              <Inp type="number" min="0" value={aForm.interview_count}
+                onChange={e => setAForm(f => ({ ...f, interview_count: e.target.value }))} />
+            </div>
+            <div><Lbl c="Prelim / Parallel" />
+              <Inp type="number" min="0" value={aForm.prelim_interview_count}
+                onChange={e => setAForm(f => ({ ...f, prelim_interview_count: e.target.value }))} />
+            </div>
+          </div>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Programs Applied To</p>
+          <p className="text-xs text-stone-400 -mt-1">One program per line (ERAS applications)</p>
+          <TA rows={5} value={aForm.applied_programs_text}
+            onChange={e => setAForm(f => ({ ...f, applied_programs_text: e.target.value }))}
+            placeholder={"Johns Hopkins\nPenn Medicine\nCooper University Hospital\n..."} />
+          {appliedList.length > 0 && <p className="text-xs text-stone-400">{appliedList.length} programs applied</p>}
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Interview Invitations</p>
+          <p className="text-xs text-stone-400 -mt-1">One program per line</p>
+          <TA rows={5} value={aForm.interview_programs_text}
+            onChange={e => setAForm(f => ({ ...f, interview_programs_text: e.target.value }))}
+            placeholder={"Johns Hopkins\nPenn Medicine\n..."} />
+          {inviteList.length > 0 && (
+            <p className="text-xs text-stone-400">
+              {inviteList.length} invitations
+              {appliedList.length > 0 && ` (${Math.round(inviteList.length / appliedList.length * 100)}% of applications)`}
+            </p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const SectionSOAP = () => (
+    <div className="px-5 py-4 space-y-3">
+      <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">SOAP</p>
+      <div><Lbl c="SOAP Contingency Plan" />
+        <Inp value={aForm.soap_plan}
+          onChange={e => setAForm(f => ({ ...f, soap_plan: e.target.value }))}
+          placeholder="Plan if unmatched..." />
+      </div>
+      <Chk label="Matched via SOAP" checked={aForm.soap_outcome} onChange={e => setAForm(f => ({ ...f, soap_outcome: e.target.checked }))} />
+    </div>
   )
+
+  const SectionMatch = () => (
+    <div className="divide-y divide-stone-100">
+      <div className="px-5 py-4 space-y-3">
+        <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Rank Order List</p>
+        <p className="text-xs text-stone-400 -mt-1">One program per line, in rank order</p>
+        <TA rows={6} value={aForm.rank_order_list_text}
+          onChange={e => setAForm(f => ({ ...f, rank_order_list_text: e.target.value }))}
+          placeholder={"#1 Johns Hopkins\n#2 Penn Medicine\n#3 Cooper\n..."} />
+        {rolLines.length > 0 && (
+          <div className="bg-stone-50 rounded-xl overflow-hidden">
+            {rolLines.map((prog, i) => {
+              const rank    = i + 1
+              const isMatch = matchRank === rank
+              return (
+                <div key={i}
+                  className={`flex items-center gap-3 px-3 py-2 text-xs border-b border-stone-100 last:border-0 ${isMatch ? 'bg-emerald-50' : ''}`}>
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-xs
+                    ${isMatch ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'}`}>{rank}</span>
+                  <span className={`flex-1 truncate ${isMatch ? 'text-emerald-700 font-semibold' : 'text-stone-600'}`}>{prog}</span>
+                  {isMatch && <span className="text-emerald-500 font-semibold text-xs">MATCHED</span>}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+      <div className="px-5 py-4 space-y-3">
+        <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Match Outcome</p>
+        <div><Lbl c="Matched Program" />
+          <Inp value={aForm.matched_program}
+            onChange={e => setAForm(f => ({ ...f, matched_program: e.target.value }))}
+            placeholder="Program name..." />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div><Lbl c="Matched Specialty" />
+            <Inp value={aForm.matched_specialty}
+              onChange={e => setAForm(f => ({ ...f, matched_specialty: e.target.value }))}
+              placeholder="Specialty..." />
+          </div>
+          <div><Lbl c="ROL Rank #" />
+            <Inp type="number" min="1" value={aForm.rank_of_match}
+              onChange={e => setAForm(f => ({ ...f, rank_of_match: e.target.value }))} />
+          </div>
+        </div>
+        <Chk label="Matched via SOAP" checked={aForm.soap_outcome} onChange={e => setAForm(f => ({ ...f, soap_outcome: e.target.checked }))} />
+        {aForm.matched_program && (
+          <div className={`rounded-xl p-3 border ${aForm.soap_outcome ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+            <p className={`text-xs font-semibold ${aForm.soap_outcome ? 'text-amber-700' : 'text-emerald-700'}`}>
+              {aForm.soap_outcome ? 'Matched via SOAP' : 'Matched'}
+              {aForm.rank_of_match ? ` · rank #${aForm.rank_of_match}` : ''}
+            </p>
+            <p className={`text-sm font-bold mt-0.5 ${aForm.soap_outcome ? 'text-amber-900' : 'text-emerald-900'}`}>
+              {aForm.matched_program}
+            </p>
+          </div>
+        )}
+      </div>
+      {history?.length > 0 && (
+        <div className="px-5 py-4">
+          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Risk History</p>
+          <div className="space-y-1.5">
+            {history.map((h, i) => {
+              const cfg = RISK_CFG[h.risk_level]
+              return (
+                <div key={i} className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg?.dot || 'bg-stone-300'}`} />
+                  <span className={`text-xs font-medium ${cfg?.text || 'text-stone-500'}`}>{cfg?.label || h.risk_level}</span>
+                  <span className="text-xs text-stone-400 ml-auto">{fmtDate(h.snapshot_date)}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  const renderBody = () => {
+    switch (mode) {
+      case 'overview':
+        return (
+          <div className="divide-y divide-stone-100">
+            <SectionRisk />
+            <SectionExams />
+            <SectionAcademic />
+            <SectionParallel />
+          </div>
+        )
+      case 'hp':
+        return (
+          <div className="px-5 py-4 space-y-3">
+            <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">HP / Honors in Desired Specialty</p>
+            <Sel value={sForm.hp_in_specialty} onChange={e => setSForm(f => ({ ...f, hp_in_specialty: e.target.value }))}>
+              <option value="">Select...</option>
+              {HP_OPTIONS.map(o => <option key={o}>{o}</option>)}
+            </Sel>
+          </div>
+        )
+      case 'mspe':
+        return (
+          <div className="px-5 py-4 space-y-3">
+            <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">MSPE Ranking</p>
+            <Sel value={sForm.mspe_ranking} onChange={e => setSForm(f => ({ ...f, mspe_ranking: e.target.value }))}>
+              <option value="">Select...</option>
+              {MSPE_OPTIONS.map(o => <option key={o}>{o}</option>)}
+            </Sel>
+          </div>
+        )
+      case 'acad':
+        return (
+          <div className="px-5 py-4 space-y-3">
+            <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Academic History</p>
+            <div><Lbl c="Academic Performance Issues" />
+              <Inp value={sForm.poor_academic_history}
+                onChange={e => setSForm(f => ({ ...f, poor_academic_history: e.target.value }))}
+                placeholder="e.g. Remediation M2, M3 surgery failure..." />
+            </div>
+            <div><Lbl c="Gap in Medical School" />
+              <Inp value={sForm.gap_in_school}
+                onChange={e => setSForm(f => ({ ...f, gap_in_school: e.target.value }))}
+                placeholder="e.g. 1 year educational, research SSR..." />
+            </div>
+            <Chk label="AOA Member" checked={sForm.aoa} onChange={e => setSForm(f => ({ ...f, aoa: e.target.checked }))} />
+          </div>
+        )
+      case 'parallel':
+        return <SectionParallel />
+      case 'interviews':
+        return <SectionInterviews />
+      case 'soap':
+        return <SectionSOAP />
+      case 'match':
+        return <SectionMatch />
+      default:
+        return null
+    }
+  }
 
   return (
     <div className="w-[440px] flex-shrink-0 border-l border-stone-200 bg-white flex flex-col overflow-hidden">
@@ -177,261 +485,21 @@ function Drawer({ student, assessment, history, onClose, onRiskChange, onSave })
       <div className="px-5 py-4 border-b border-stone-100 flex items-center justify-between flex-shrink-0">
         <div>
           <p className="font-bold text-stone-900">{student?.profiles?.full_name}</p>
-          <p className="text-sm text-stone-400 mt-0.5">{specialty || 'No specialty set'}</p>
+          <p className="text-sm text-stone-400 mt-0.5">{MODE_LABELS[mode] || specialty}</p>
         </div>
         <button onClick={onClose}
           className="w-8 h-8 flex items-center justify-center text-stone-400 hover:text-stone-700 rounded-lg hover:bg-stone-100 text-xl leading-none">×</button>
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto divide-y divide-stone-100">
-
-        {/* Risk selector */}
-        <div className="px-5 py-4">
-          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Match Risk Level</p>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(RISK_CFG).map(([val, cfg]) => (
-              <button key={val} onClick={() => handleRiskChange(val)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all
-                  ${localRisk === val
-                    ? `${cfg.bg} ${cfg.text} ${cfg.border} ring-2 ring-offset-1 ring-current`
-                    : 'bg-white text-stone-500 border-stone-200 hover:border-stone-300'}`}>
-                {cfg.label}
-              </button>
-            ))}
-          </div>
-          {suggested !== localRisk && (
-            <div className="mt-2 text-xs text-amber-600 flex items-center gap-1">
-              <span>⚡</span>
-              <span>Auto-score suggests <strong>{RISK_CFG[suggested]?.label}</strong></span>
-              <button onClick={() => handleRiskChange(suggested)} className="ml-1 underline hover:no-underline">Apply</button>
-            </div>
-          )}
-        </div>
-
-        {/* Risk history */}
-        {history?.length > 0 && (
-          <div className="px-5 py-4">
-            <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Risk History</p>
-            <div className="space-y-1.5">
-              {history.map((h, i) => {
-                const cfg = RISK_CFG[h.risk_level]
-                return (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg?.dot || 'bg-stone-300'}`} />
-                    <span className={`text-xs font-medium ${cfg?.text || 'text-stone-500'}`}>{cfg?.label || h.risk_level}</span>
-                    <span className="text-xs text-stone-400 ml-auto">{fmtDate(h.snapshot_date)}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Exam scores (read-only) */}
-        <div className="px-5 py-4">
-          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Exam Scores</p>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-stone-50 rounded-xl p-3">
-              <p className="text-xs text-stone-400">Step 1</p>
-              <p className={`text-sm font-bold mt-0.5 ${(student?.usmle_step1_attempts || 0) > 1 ? 'text-orange-600' : 'text-stone-900'}`}>
-                {(student?.usmle_step1_attempts || 0) > 1
-                  ? `F→P (${student.usmle_step1_attempts}×)`
-                  : student?.usmle_step1_status === 'pass' ? 'Pass (1×)' : '—'}
-              </p>
-            </div>
-            <div className="bg-stone-50 rounded-xl p-3">
-              <p className="text-xs text-stone-400">Step 2{mean ? ` (mean ${mean})` : ''}</p>
-              <p className={`text-sm font-bold mt-0.5 ${
-                delta === null ? 'text-stone-400' :
-                delta < -20 ? 'text-rose-600' : delta < -10 ? 'text-orange-500' :
-                delta < 0 ? 'text-yellow-600' : 'text-emerald-600'}`}>
-                {step2 ?? '—'}
-                {delta !== null && <span className="text-xs font-normal ml-1 opacity-70">({delta >= 0 ? '+' : ''}{delta})</span>}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Academic profile */}
-        <div className="px-5 py-4 space-y-3">
-          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Academic Profile</p>
-          <div><Lbl c="MSPE Ranking" />
-            <Sel value={sForm.mspe_ranking} onChange={e => setSForm(f => ({ ...f, mspe_ranking: e.target.value }))}>
-              <option value="">Select...</option>
-              {MSPE_OPTIONS.map(o => <option key={o}>{o}</option>)}
-            </Sel>
-          </div>
-          <div><Lbl c="HP / Honors in Desired Specialty" />
-            <Sel value={sForm.hp_in_specialty} onChange={e => setSForm(f => ({ ...f, hp_in_specialty: e.target.value }))}>
-              <option value="">Select...</option>
-              {HP_OPTIONS.map(o => <option key={o}>{o}</option>)}
-            </Sel>
-          </div>
-          <div><Lbl c="Academic Performance Issues" />
-            <Inp value={sForm.poor_academic_history}
-              onChange={e => setSForm(f => ({ ...f, poor_academic_history: e.target.value }))}
-              placeholder="e.g. Remediation M2, M3 surgery failure..." />
-          </div>
-          <div><Lbl c="Gap in Medical School" />
-            <Inp value={sForm.gap_in_school}
-              onChange={e => setSForm(f => ({ ...f, gap_in_school: e.target.value }))}
-              placeholder="e.g. 1 year educational, research SSR..." />
-          </div>
-          <Chk label="AOA Member" checked={sForm.aoa} onChange={e => setSForm(f => ({ ...f, aoa: e.target.checked }))} />
-        </div>
-
-        {/* Application */}
-        <div className="px-5 py-4 space-y-3">
-          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Application</p>
-          <div className="grid grid-cols-2 gap-2">
-            <div><Lbl c="Primary Interviews" />
-              <Inp type="number" min="0" value={aForm.interview_count}
-                onChange={e => setAForm(f => ({ ...f, interview_count: e.target.value }))} />
-            </div>
-            <div><Lbl c="Prelim / Parallel Invites" />
-              <Inp type="number" min="0" value={aForm.prelim_interview_count}
-                onChange={e => setAForm(f => ({ ...f, prelim_interview_count: e.target.value }))} />
-            </div>
-          </div>
-          <div><Lbl c="Parallel Plan" />
-            <Inp value={aForm.parallel_plan}
-              onChange={e => setAForm(f => ({ ...f, parallel_plan: e.target.value }))}
-              placeholder="e.g. Internal Medicine..." />
-          </div>
-          <div><Lbl c="SOAP Contingency Plan" />
-            <Inp value={aForm.soap_plan}
-              onChange={e => setAForm(f => ({ ...f, soap_plan: e.target.value }))}
-              placeholder="Plan if unmatched..." />
-          </div>
-          <div><Lbl c="Geographic Preference" />
-            <Inp value={aForm.geographic_preference}
-              onChange={e => setAForm(f => ({ ...f, geographic_preference: e.target.value }))}
-              placeholder="e.g. Mid-Atlantic, Northeast..." />
-          </div>
-          <div className="flex gap-6">
-            <Chk label="Away Rotation" checked={aForm.away_rotation} onChange={e => setAForm(f => ({ ...f, away_rotation: e.target.checked }))} />
-            <Chk label="ROI Released"  checked={aForm.release_of_information} onChange={e => setAForm(f => ({ ...f, release_of_information: e.target.checked }))} />
-          </div>
-        </div>
-
-        {/* Applied Programs */}
-        <div className="px-5 py-4 space-y-3">
-          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Programs Applied To</p>
-          <p className="text-xs text-stone-400 -mt-1">One program per line (ERAS applications)</p>
-          <TA
-            rows={5}
-            value={aForm.applied_programs_text}
-            onChange={e => setAForm(f => ({ ...f, applied_programs_text: e.target.value }))}
-            placeholder={"Johns Hopkins Internal Medicine\nPenn Internal Medicine\nCooper University Hospital\n..."}
-          />
-          {toArr(aForm.applied_programs_text).length > 0 && (
-            <p className="text-xs text-stone-400">{toArr(aForm.applied_programs_text).length} programs applied</p>
-          )}
-        </div>
-
-        {/* Interview Invitations */}
-        <div className="px-5 py-4 space-y-3">
-          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Interview Invitations</p>
-          <p className="text-xs text-stone-400 -mt-1">One program per line</p>
-          <TA
-            rows={5}
-            value={aForm.interview_programs_text}
-            onChange={e => setAForm(f => ({ ...f, interview_programs_text: e.target.value }))}
-            placeholder={"Johns Hopkins Internal Medicine\nPenn Internal Medicine\nCooper University Hospital\n..."}
-          />
-          {toArr(aForm.interview_programs_text).length > 0 && (
-            <p className="text-xs text-stone-400">{toArr(aForm.interview_programs_text).length} interviews received</p>
-          )}
-        </div>
-
-        {/* Rank Order List */}
-        <div className="px-5 py-4 space-y-3">
-          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Rank Order List (ROL)</p>
-          <p className="text-xs text-stone-400 -mt-1">One program per line, in rank order</p>
-          <TA
-            rows={6}
-            value={aForm.rank_order_list_text}
-            onChange={e => setAForm(f => ({ ...f, rank_order_list_text: e.target.value }))}
-            placeholder={"#1 Johns Hopkins\n#2 Penn\n#3 Cooper University Hospital\n..."}
-          />
-
-          {/* Visual ROL preview with match highlighted */}
-          {rolLines.length > 0 && (
-            <div className="bg-stone-50 rounded-xl overflow-hidden">
-              {rolLines.map((prog, i) => {
-                const rank    = i + 1
-                const isMatch = matchRank === rank
-                return (
-                  <div key={i}
-                    className={`flex items-center gap-3 px-3 py-2 text-xs border-b border-stone-100 last:border-0
-                      ${isMatch ? 'bg-emerald-50' : ''}`}>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-xs
-                      ${isMatch ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'}`}>
-                      {rank}
-                    </span>
-                    <span className={`flex-1 truncate ${isMatch ? 'text-emerald-700 font-semibold' : 'text-stone-600'}`}>{prog}</span>
-                    {isMatch && <span className="text-emerald-500 font-semibold text-xs">MATCHED</span>}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Match Outcome */}
-        <div className="px-5 py-4 space-y-3">
-          <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Match Outcome</p>
-          <div><Lbl c="Matched Program" />
-            <Inp value={aForm.matched_program}
-              onChange={e => setAForm(f => ({ ...f, matched_program: e.target.value }))}
-              placeholder="Program name..." />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div><Lbl c="Matched Specialty" />
-              <Inp value={aForm.matched_specialty}
-                onChange={e => setAForm(f => ({ ...f, matched_specialty: e.target.value }))}
-                placeholder="Specialty..." />
-            </div>
-            <div><Lbl c="ROL Rank of Match" />
-              <Inp type="number" min="1" value={aForm.rank_of_match}
-                onChange={e => setAForm(f => ({ ...f, rank_of_match: e.target.value }))} />
-            </div>
-          </div>
-          <Chk label="Matched via SOAP" checked={aForm.soap_outcome} onChange={e => setAForm(f => ({ ...f, soap_outcome: e.target.checked }))} />
-
-          {/* Outcome summary card */}
-          {aForm.matched_program && (
-            <div className={`rounded-xl p-3 border ${aForm.soap_outcome ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
-              <p className={`text-xs font-semibold ${aForm.soap_outcome ? 'text-amber-700' : 'text-emerald-700'}`}>
-                {aForm.soap_outcome ? 'Matched via SOAP' : 'Matched'}
-                {aForm.rank_of_match ? ` at rank #${aForm.rank_of_match} of ${rolLines.length || '?'}` : ''}
-              </p>
-              <p className={`text-sm font-bold mt-0.5 ${aForm.soap_outcome ? 'text-amber-900' : 'text-emerald-900'}`}>
-                {aForm.matched_program}
-              </p>
-              {aForm.matched_specialty && (
-                <p className={`text-xs mt-0.5 ${aForm.soap_outcome ? 'text-amber-600' : 'text-emerald-600'}`}>
-                  {aForm.matched_specialty}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Notes */}
-        <div className="px-5 py-4">
-          <Lbl c="Advisor Notes" />
-          <TA rows={3} value={aForm.notes}
-            onChange={e => setAForm(f => ({ ...f, notes: e.target.value }))}
-            placeholder="Additional notes..." />
-        </div>
+      <div className="flex-1 overflow-y-auto">
+        {renderBody()}
       </div>
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-stone-100 flex-shrink-0 space-y-2">
         {saveMsg === 'saved' && (
-          <p className="text-xs text-emerald-600 text-center font-medium">✓ Saved successfully</p>
+          <p className="text-xs text-emerald-600 text-center font-medium">✓ Saved</p>
         )}
         {saveMsg?.startsWith('error') && (
           <p className="text-xs text-rose-600 text-center">{saveMsg}</p>
@@ -455,6 +523,7 @@ export default function MatchRiskPage() {
   const [history,     setHistory]     = useState({})
   const [season,      setSeason]      = useState(DEFAULT_SEASON)
   const [selectedId,  setSelectedId]  = useState(null)
+  const [selectedCol, setSelectedCol] = useState('overview')
   const [loading,     setLoading]     = useState(true)
   const [adminId,     setAdminId]     = useState(null)
   const [riskOpen,    setRiskOpen]    = useState(null)
@@ -499,6 +568,16 @@ export default function MatchRiskPage() {
     load()
   }, [season])
 
+  const openDrawer = (studentId, col, e) => {
+    e.stopPropagation()
+    if (selectedId === studentId && selectedCol === col) {
+      setSelectedId(null)
+    } else {
+      setSelectedId(studentId)
+      setSelectedCol(col)
+    }
+  }
+
   const updateRisk = async (studentId, newRisk) => {
     setPageError(null)
     const { data: upserted, error } = await supabase
@@ -526,8 +605,8 @@ export default function MatchRiskPage() {
     setRiskOpen(null)
   }
 
-  // saveAssessment now receives localRisk from the drawer so it always saves what the drawer shows
   const saveAssessment = async (studentId, aForm, sForm, riskLevel) => {
+    // Student profile fields — non-fatal, continue even if this fails
     const { error: studentErr } = await supabase.from('students').update({
       mspe_ranking:          sForm.mspe_ranking          || null,
       aoa:                   sForm.aoa,
@@ -535,8 +614,6 @@ export default function MatchRiskPage() {
       poor_academic_history: sForm.poor_academic_history || null,
       gap_in_school:         sForm.gap_in_school         || null,
     }).eq('id', studentId)
-
-    if (studentErr) return { error: studentErr.message }
 
     const { data: upserted, error: assessErr } = await supabase
       .from('match_risk_assessments')
@@ -563,23 +640,25 @@ export default function MatchRiskPage() {
 
     if (assessErr) return { error: assessErr.message }
 
-    if (upserted) {
-      // applied/interview/rol columns require migration_4.sql — update separately so
-      // a missing column doesn't block the rest of the save
-      const applied   = toArr(aForm.applied_programs_text)
-      const programs  = toArr(aForm.interview_programs_text)
-      const rol       = toArr(aForm.rank_order_list_text)
-      if (applied.length || programs.length || rol.length) {
-        await supabase.from('match_risk_assessments').update({
-          applied_programs:   applied,
-          interview_programs: programs,
-          rank_order_list:    rol,
-        }).eq('id', upserted.id)
-      }
+    const applied  = toArr(aForm.applied_programs_text)
+    const programs = toArr(aForm.interview_programs_text)
+    const rol      = toArr(aForm.rank_order_list_text)
 
-      setAssessments(prev => ({ ...prev, [studentId]: upserted }))
-      setStudents(prev => prev.map(s => s.id === studentId ? { ...s, ...sForm } : s))
-    }
+    // Save array columns separately (require migration_4) — non-fatal
+    await supabase.from('match_risk_assessments').update({
+      applied_programs:   applied,
+      interview_programs: programs,
+      rank_order_list:    rol,
+    }).eq('id', upserted.id)
+
+    // Update state immediately with ALL saved data including arrays
+    setAssessments(prev => ({
+      ...prev,
+      [studentId]: { ...upserted, applied_programs: applied, interview_programs: programs, rank_order_list: rol },
+    }))
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, ...sForm } : s))
+
+    if (studentErr) return { error: `Student fields not saved: ${studentErr.message}` }
     return { success: true }
   }
 
@@ -602,8 +681,11 @@ export default function MatchRiskPage() {
   const selectedHistory    = history[selectedId] || []
 
   const seasons = [DEFAULT_SEASON + 1, DEFAULT_SEASON, DEFAULT_SEASON - 1]
-  const th = 'border-b border-stone-100 bg-stone-50 px-4 py-3 text-left text-xs font-semibold text-stone-400 uppercase tracking-wide whitespace-nowrap'
-  const td = (extra = '') => `border-b border-stone-100 px-4 py-3 text-sm ${extra}`
+
+  // Cell class helpers
+  const th  = 'border-b border-stone-100 bg-stone-50 px-4 py-3 text-left text-xs font-semibold text-stone-400 uppercase tracking-wide whitespace-nowrap'
+  const td  = (extra = '') => `border-b border-stone-100 px-4 py-3 text-sm ${extra}`
+  const clickCell = (sid, col, e) => openDrawer(sid, col, e)
 
   return (
     <div className="h-screen flex flex-col bg-stone-50">
@@ -667,17 +749,17 @@ export default function MatchRiskPage() {
             <table className="w-full border-collapse" style={{ minWidth: 1060 }}>
               <thead>
                 <tr>
-                  <th className={`${th} sticky left-0 z-20 bg-stone-50`}                          style={{ minWidth: 200 }}>Student</th>
-                  <th className={`${th} sticky z-20 bg-stone-50`}                                 style={{ left: 200, minWidth: 160 }}>Specialty</th>
-                  <th className={`${th} sticky z-20 bg-stone-50 border-r border-stone-200`}       style={{ left: 360, minWidth: 140 }}>Risk Level</th>
+                  <th className={`${th} sticky left-0 z-20 bg-stone-50`}                    style={{ minWidth: 200 }}>Student</th>
+                  <th className={`${th} sticky z-20 bg-stone-50`}                           style={{ left: 200, minWidth: 160 }}>Specialty</th>
+                  <th className={`${th} sticky z-20 bg-stone-50 border-r border-stone-200`} style={{ left: 360, minWidth: 140 }}>Risk Level</th>
                   <th className={th} style={{ minWidth: 80  }}>Step 1</th>
                   <th className={th} style={{ minWidth: 130 }}>Step 2 / Mean</th>
                   <th className={th} style={{ minWidth: 100 }}>HP / Honors</th>
                   <th className={th} style={{ minWidth: 110 }}>MSPE</th>
-                  <th className={th} style={{ minWidth: 80  }}>Acad Hx</th>
-                  <th className={th} style={{ minWidth: 90  }}>Gap</th>
+                  <th className={th} style={{ minWidth: 100 }}>Acad Hx</th>
+                  <th className={th} style={{ minWidth: 100 }}>Gap</th>
                   <th className={th} style={{ minWidth: 150 }}>Parallel Plan</th>
-                  <th className={th} style={{ minWidth: 90  }}>Interviews</th>
+                  <th className={th} style={{ minWidth: 100 }}>Interviews</th>
                   <th className={th} style={{ minWidth: 80  }}>SOAP</th>
                   <th className={th} style={{ minWidth: 200 }}>Match Result</th>
                 </tr>
@@ -691,26 +773,40 @@ export default function MatchRiskPage() {
                   const mean      = SPECIALTY_MEANS[student.specialty_interest]
                   const delta     = step2 != null && mean ? step2 - mean : null
                   const suggested = autoScore(student)
-                  const cellBg    = isSel ? 'bg-teal-50' : 'bg-white'
+
+                  // Per-cell background: highlight only the selected cell
+                  const bg = (col) => {
+                    const rowSel = isSel
+                    const colSel = selectedCol === col
+                    if (rowSel && colSel) return 'bg-teal-100'
+                    if (rowSel) return 'bg-teal-50'
+                    return 'bg-white'
+                  }
+                  const cellClass = (col, extra = '') =>
+                    `border-b border-stone-100 px-4 py-3 text-sm cursor-pointer hover:bg-teal-50 transition-colors ${bg(col)} ${extra}`
 
                   return (
-                    <tr key={student.id}
-                      onClick={() => setSelectedId(isSel ? null : student.id)}
-                      className={`cursor-pointer transition-colors ${isSel ? '' : 'hover:bg-stone-50'}`}>
+                    <tr key={student.id} className={isSel ? '' : 'hover:bg-stone-50'}>
 
-                      <td className={`sticky left-0 z-10 border-b border-stone-100 px-4 py-3 ${cellBg}`}>
+                      {/* Name — opens overview */}
+                      <td className={`sticky left-0 z-10 ${cellClass('overview')}`}
+                        onClick={e => clickCell(student.id, 'overview', e)}>
                         <p className="text-sm font-medium text-stone-900 whitespace-nowrap">{student.profiles?.full_name}</p>
                         {student.aoa && <span className="text-xs text-amber-600 font-semibold">AOA</span>}
                       </td>
 
-                      <td className={`sticky z-10 border-b border-stone-100 px-4 py-3 ${cellBg}`} style={{ left: 200 }}>
+                      {/* Specialty — not a separate mode, click opens overview */}
+                      <td className={`sticky z-10 ${cellClass('overview')}`} style={{ left: 200 }}
+                        onClick={e => clickCell(student.id, 'overview', e)}>
                         <p className="text-sm text-stone-700 whitespace-nowrap">{student.specialty_interest || '—'}</p>
                         {COMPETITIVE.has(student.specialty_interest) && (
                           <p className="text-xs text-purple-600 font-medium">Competitive</p>
                         )}
                       </td>
 
-                      <td className={`sticky z-10 border-b border-stone-100 border-r border-stone-200 px-4 py-3 ${cellBg}`} style={{ left: 360 }}>
+                      {/* Risk Level — inline dropdown, no drawer */}
+                      <td className={`sticky z-10 border-b border-stone-100 border-r border-stone-200 px-4 py-3 ${bg('risk')}`}
+                        style={{ left: 360 }}>
                         <div className="relative flex items-center gap-1">
                           <RiskPill level={risk} onClick={() => setRiskOpen(riskOpen === student.id ? null : student.id)} />
                           {suggested !== risk && (
@@ -731,7 +827,8 @@ export default function MatchRiskPage() {
                         </div>
                       </td>
 
-                      <td className={td()}>
+                      {/* Step 1 — read-only */}
+                      <td className={cellClass('overview')} onClick={e => clickCell(student.id, 'overview', e)}>
                         <span className={`font-medium ${(student.usmle_step1_attempts || 0) > 1 ? 'text-orange-600' : 'text-stone-700'}`}>
                           {(student.usmle_step1_attempts || 0) > 1 ? 'F/P' : student.usmle_step1_status === 'pass' ? 'Pass' : '—'}
                         </span>
@@ -740,7 +837,8 @@ export default function MatchRiskPage() {
                         )}
                       </td>
 
-                      <td className={td()}>
+                      {/* Step 2 — read-only */}
+                      <td className={cellClass('overview')} onClick={e => clickCell(student.id, 'overview', e)}>
                         {step2 ? (
                           <span>
                             <span className={`font-semibold ${
@@ -758,7 +856,8 @@ export default function MatchRiskPage() {
                         ) : <span className="text-stone-300">—</span>}
                       </td>
 
-                      <td className={td()}>
+                      {/* HP / Honors */}
+                      <td className={cellClass('hp')} onClick={e => clickCell(student.id, 'hp', e)}>
                         <span className={
                           student.hp_in_specialty === 'Honors'    ? 'text-emerald-600 font-semibold' :
                           student.hp_in_specialty === 'High Pass' ? 'text-emerald-500' :
@@ -768,7 +867,8 @@ export default function MatchRiskPage() {
                         </span>
                       </td>
 
-                      <td className={td()}>
+                      {/* MSPE */}
+                      <td className={cellClass('mspe')} onClick={e => clickCell(student.id, 'mspe', e)}>
                         <span className={
                           student.mspe_ranking === 'Excellent'    ? 'text-emerald-600 font-semibold' :
                           student.mspe_ranking === 'Very Good'    ? 'text-emerald-500' :
@@ -780,24 +880,28 @@ export default function MatchRiskPage() {
                         </span>
                       </td>
 
-                      <td className={td('text-center')}>
+                      {/* Acad Hx */}
+                      <td className={cellClass('acad')} onClick={e => clickCell(student.id, 'acad', e)}>
                         {student.poor_academic_history
                           ? <span title={student.poor_academic_history}
-                              className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-600 text-xs font-bold cursor-help">!</span>
+                              className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-600 text-xs font-bold">!</span>
                           : <span className="text-stone-200">—</span>}
                       </td>
 
-                      <td className={td()}>
+                      {/* Gap */}
+                      <td className={cellClass('acad')} onClick={e => clickCell(student.id, 'acad', e)}>
                         <span className={student.gap_in_school ? 'text-orange-600 text-xs' : 'text-stone-300'}>
                           {student.gap_in_school || '—'}
                         </span>
                       </td>
 
-                      <td className={td()}>
+                      {/* Parallel Plan */}
+                      <td className={cellClass('parallel')} onClick={e => clickCell(student.id, 'parallel', e)}>
                         <span className="text-stone-600 text-xs">{asmt?.parallel_plan || '—'}</span>
                       </td>
 
-                      <td className={td()}>
+                      {/* Interviews */}
+                      <td className={cellClass('interviews')} onClick={e => clickCell(student.id, 'interviews', e)}>
                         {asmt?.interview_count != null ? (
                           <span>
                             <span className={`font-semibold ${
@@ -812,7 +916,8 @@ export default function MatchRiskPage() {
                         ) : <span className="text-stone-300">—</span>}
                       </td>
 
-                      <td className={td('text-center')}>
+                      {/* SOAP */}
+                      <td className={cellClass('soap')} onClick={e => clickCell(student.id, 'soap', e)}>
                         {asmt?.soap_outcome
                           ? <span className="text-xs bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-medium">SOAP</span>
                           : asmt?.soap_plan
@@ -820,7 +925,8 @@ export default function MatchRiskPage() {
                           : <span className="text-stone-300">—</span>}
                       </td>
 
-                      <td className={td()}>
+                      {/* Match Result */}
+                      <td className={cellClass('match')} onClick={e => clickCell(student.id, 'match', e)}>
                         {asmt?.matched_program ? (
                           <div>
                             <p className="text-stone-900 font-medium text-xs truncate max-w-[190px]">{asmt.matched_program}</p>
@@ -845,6 +951,7 @@ export default function MatchRiskPage() {
             student={selectedStudent}
             assessment={selectedAssessment}
             history={selectedHistory}
+            mode={selectedCol}
             onClose={() => setSelectedId(null)}
             onRiskChange={updateRisk}
             onSave={saveAssessment}

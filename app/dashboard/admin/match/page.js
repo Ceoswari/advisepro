@@ -614,7 +614,7 @@ export default function MatchRiskPage() {
       const { data: studs } = await supabase
         .from('students')
         .select('*, profiles(full_name, email)')
-        .eq('class_year', 'MS4')
+        .eq('graduation_year', season)
         .order('id')
 
       if (!studs?.length) { setStudents([]); setLoading(false); return }
@@ -777,7 +777,7 @@ export default function MatchRiskPage() {
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-xl font-bold text-stone-900">Match Risk</h2>
-            <p className="text-stone-400 text-sm mt-0.5">{students.length} MS4 students · {season} season</p>
+            <p className="text-stone-400 text-sm mt-0.5">{students.length} students graduating {season}</p>
           </div>
           <div className="flex items-center gap-1 bg-stone-100 rounded-xl p-1">
             {seasons.map(y => (
@@ -813,8 +813,8 @@ export default function MatchRiskPage() {
             <div className="p-16 text-center text-stone-400 text-sm">Loading match data...</div>
           ) : students.length === 0 ? (
             <div className="p-16 text-center">
-              <p className="text-stone-400 text-sm">No MS4 students found.</p>
-              <p className="text-stone-300 text-xs mt-1">Students with class year MS4 will appear here.</p>
+              <p className="text-stone-400 text-sm">No students found for the {season} match season.</p>
+              <p className="text-stone-300 text-xs mt-1">Students with graduation year {season} will appear here.</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-16 text-center text-stone-400 text-sm">No students match your filters.</div>

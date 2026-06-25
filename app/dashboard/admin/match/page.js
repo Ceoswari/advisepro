@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import DashboardNav, { ADMIN_NAV } from '@/app/components/DashboardNav'
 
@@ -124,14 +124,36 @@ function Drawer({ student, assessment, history, mode, onClose, onRiskChange, onS
   const [sForm, setSForm] = useState({
     mspe_ranking: '', aoa: false, hp_in_specialty: '', poor_academic_history: '', gap_in_school: '',
   })
-  const [localRisk, setLocalRisk] = useState(assessment?.risk_level || 'low')
-  const [saving,    setSaving]    = useState(false)
-  const [saveMsg,   setSaveMsg]   = useState(null)
+  const [localRisk,    setLocalRisk]    = useState(assessment?.risk_level || 'low')
+  const [saving,       setSaving]       = useState(false)
+  const [saveMsg,      setSaveMsg]      = useState(null)
+  const [nrmpCache,    setNrmpCache]    = useState({}) // program_code → program row
+  const [searchState,  setSearchState]  = useState({ idx: -1, results: [], loading: false })
+  const searchTimer = useRef(null)
 
   // Reset localRisk whenever student or saved value changes
   useEffect(() => {
     setLocalRisk(assessment?.risk_level || 'low')
   }, [student?.id, assessment?.risk_level])
+
+  // Preload NRMP cache for programs already linked to this assessment
+  useEffect(() => {
+    setSearchState({ idx: -1, results: [], loading: false })
+    const codes = (assessment?.applied_programs_data || []).map(p => p.program_code).filter(Boolean)
+    if (!codes.length) return
+    const missing = codes.filter(c => !nrmpCache[c])
+    if (!missing.length) return
+    supabase
+      .from('residency_programs')
+      .select('program_code, specialty, institution, city, state, quota_2026, filled_2026, quota_2025, filled_2025')
+      .in('program_code', missing)
+      .then(({ data }) => {
+        if (!data) return
+        const entries = {}
+        data.forEach(p => { entries[p.program_code] = p })
+        setNrmpCache(prev => ({ ...prev, ...entries }))
+      })
+  }, [assessment?.id])
 
   // Reset forms when student changes
   useEffect(() => {
@@ -189,7 +211,45 @@ function Drawer({ student, assessment, history, mode, onClose, onRiskChange, onS
     }
   }
 
-  // ── Section renderers ───────────────────────────────────────────────────────
+  // ── NRMP helpers ────────────────────────────────────────────────────────────
+  const searchNRMP = (query, idx) => {
+    clearTimeout(searchTimer.current)
+    if (!query || query.length < 2) {
+      setSearchState({ idx: -1, results: [], loading: false })
+      return
+    }
+    setSearchState(s => ({ ...s, idx, loading: true }))
+    searchTimer.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('residency_programs')
+        .select('program_code, specialty, institution, city, state, quota_2026, filled_2026, quota_2025, filled_2025')
+        .or(`specialty.ilike.%${query}%,institution.ilike.%${query}%`)
+        .order('specialty')
+        .limit(10)
+      setSearchState({ idx, results: data || [], loading: false })
+    }, 300)
+  }
+
+  const selectNRMPProgram = (i, prog) => {
+    setAForm(f => {
+      const next = [...f.applied_programs_data]
+      next[i] = { ...next[i], program: `${prog.specialty} – ${prog.institution}`, program_code: prog.program_code }
+      return { ...f, applied_programs_data: next }
+    })
+    setNrmpCache(prev => ({ ...prev, [prog.program_code]: prog }))
+    setSearchState({ idx: -1, results: [], loading: false })
+  }
+
+  const fillBadge = (quota, filled) => {
+    if (!quota) return null
+    const pct = Math.round((filled || 0) / quota * 100)
+    const color = pct >= 90 ? 'bg-emerald-100 text-emerald-700' :
+                  pct >= 70 ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-orange-100 text-orange-700'
+    return { pct, color, label: `${filled ?? '?'}/${quota} · ${pct}%` }
+  }
+
+  // ── Section renderers ────────────────────────────────────────────────────────
   const SectionRisk = () => (
     <div className="px-5 py-4">
       <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-3">Match Risk Level</p>
@@ -343,29 +403,86 @@ function Drawer({ student, assessment, history, mode, onClose, onRiskChange, onS
           )}
 
           <div className="space-y-2">
-            {applied.map((entry, i) => (
-              <div key={i} className="flex gap-2 items-center">
-                <input
-                  value={entry.program}
-                  onChange={e => updateProgram(i, 'program', e.target.value)}
-                  placeholder="Program name..."
-                  className="flex-1 border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-0"
-                />
-                <select
-                  value={entry.signal}
-                  onChange={e => updateProgram(i, 'signal', e.target.value)}
-                  className={`border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 flex-shrink-0 w-32
-                    ${entry.signal === 'gold'   ? 'border-amber-300 bg-amber-50 text-amber-700' :
-                      entry.signal === 'silver' ? 'border-slate-300 bg-slate-50 text-slate-600' :
-                      'border-stone-200 text-stone-500'}`}>
-                  {SIGNAL_OPTIONS.map(s => (
-                    <option key={s.value} value={s.value}>{s.icon ? `${s.icon} ${s.label}` : s.label}</option>
-                  ))}
-                </select>
-                <button onClick={() => removeProgram(i)}
-                  className="text-stone-300 hover:text-rose-500 transition-colors text-lg leading-none flex-shrink-0">×</button>
-              </div>
-            ))}
+            {applied.map((entry, i) => {
+              const cached = entry.program_code ? nrmpCache[entry.program_code] : null
+              const badge  = cached ? fillBadge(cached.quota_2026, cached.filled_2026) : null
+              const isSearchOpen = searchState.idx === i && searchState.results.length > 0
+              return (
+                <div key={i} className="space-y-1">
+                  <div className="flex gap-2 items-center">
+                    <div className="relative flex-1 min-w-0">
+                      <input
+                        value={entry.program}
+                        onChange={e => {
+                          updateProgram(i, 'program', e.target.value)
+                          if (entry.program_code) updateProgram(i, 'program_code', '')
+                          searchNRMP(e.target.value, i)
+                        }}
+                        onBlur={() => setTimeout(() => setSearchState(s => s.idx === i ? { ...s, idx: -1 } : s), 150)}
+                        placeholder="Type specialty or program name to search..."
+                        className="w-full border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      />
+                      {searchState.loading && searchState.idx === i && (
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400">...</span>
+                      )}
+                      {isSearchOpen && (
+                        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-stone-200 rounded-xl shadow-xl overflow-hidden max-h-52 overflow-y-auto">
+                          {searchState.results.map(prog => {
+                            const b = fillBadge(prog.quota_2026, prog.filled_2026)
+                            return (
+                              <button key={prog.program_code}
+                                onMouseDown={e => { e.preventDefault(); selectNRMPProgram(i, prog) }}
+                                className="w-full text-left px-3 py-2 hover:bg-teal-50 transition-colors border-b border-stone-100 last:border-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-medium text-stone-900 truncate">{prog.specialty}</p>
+                                    <p className="text-xs text-stone-400 truncate">{prog.institution}{prog.city ? `, ${prog.city}` : ''} · {prog.state}</p>
+                                  </div>
+                                  {b && (
+                                    <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 font-medium ${b.color}`}>
+                                      {b.pct}%
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <select
+                      value={entry.signal}
+                      onChange={e => updateProgram(i, 'signal', e.target.value)}
+                      className={`border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 flex-shrink-0 w-32
+                        ${entry.signal === 'gold'   ? 'border-amber-300 bg-amber-50 text-amber-700' :
+                          entry.signal === 'silver' ? 'border-slate-300 bg-slate-50 text-slate-600' :
+                          'border-stone-200 text-stone-500'}`}>
+                      {SIGNAL_OPTIONS.map(s => (
+                        <option key={s.value} value={s.value}>{s.icon ? `${s.icon} ${s.label}` : s.label}</option>
+                      ))}
+                    </select>
+                    <button onClick={() => removeProgram(i)}
+                      className="text-stone-300 hover:text-rose-500 transition-colors text-lg leading-none flex-shrink-0">×</button>
+                  </div>
+                  {/* NRMP fill rate badge for linked programs */}
+                  {badge && (
+                    <div className="flex items-center gap-2 pl-1">
+                      <span className="text-xs text-stone-400">NRMP 2026:</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${badge.color}`}>{badge.label}</span>
+                      {fillBadge(cached.quota_2025, cached.filled_2025) && (
+                        <>
+                          <span className="text-xs text-stone-300">·</span>
+                          <span className="text-xs text-stone-400">2025:</span>
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${fillBadge(cached.quota_2025, cached.filled_2025).color}`}>
+                            {fillBadge(cached.quota_2025, cached.filled_2025).label}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
 

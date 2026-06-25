@@ -608,6 +608,7 @@ function StudentDashboardContent() {
           { label: 'Overview',   href: '/dashboard/student', tab: 'overview',   isDefault: true },
           { label: 'Milestones', href: '/dashboard/student', tab: 'milestones', badge: milestoneBadge },
           { label: 'Grades',     href: '/dashboard/student', tab: 'grades',     badge: gradesBadge },
+          { label: 'Programs',   href: '/dashboard/student/programs' },
           { label: 'Messages',   href: '/dashboard/student', tab: 'messages',   badge: unreadMessages },
         ]}
       >

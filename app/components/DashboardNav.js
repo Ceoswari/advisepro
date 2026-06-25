@@ -23,6 +23,7 @@ export const STUDENT_NAV = [
   { label: 'Overview',   href: '/dashboard/student', tab: 'overview',   isDefault: true },
   { label: 'Milestones', href: '/dashboard/student', tab: 'milestones' },
   { label: 'Grades',     href: '/dashboard/student', tab: 'grades'     },
+  { label: 'Programs',   href: '/dashboard/student/programs' },
   { label: 'Messages',   href: '/dashboard/student', tab: 'messages'   },
 ]
 

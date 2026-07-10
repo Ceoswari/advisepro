@@ -84,6 +84,13 @@ export default function StudentDetail() {
       setLors(lorData || [])
       setGrades(gradesData || [])
       setLoading(false)
+
+      // FERPA §99.32: log when a school official accesses a student's education record
+      supabase.from('audit_logs').insert({
+        action: 'view_student_record',
+        performed_by: user.id,
+        student_id: id,
+      })
     }
     fetchData()
   }, [id])

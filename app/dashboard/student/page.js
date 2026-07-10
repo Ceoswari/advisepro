@@ -541,6 +541,35 @@ function StudentDashboardContent() {
   const isEarlyStudent = ['MS1', 'MS2'].includes(student?.class_year)
   const isMS4 = student?.class_year === 'MS4'
 
+  const handleExport = () => {
+    const exportData = {
+      exported_at: new Date().toISOString(),
+      profile: { full_name: profile?.full_name, email: profile?.email },
+      student: student,
+      milestones: milestones.map(m => ({
+        title: m.milestones?.title,
+        due_year: m.milestones?.due_year,
+        status: m.status,
+        completed_date: m.completed_date,
+      })),
+      grades,
+      publications,
+      lor_requests: lors,
+      advising_notes: advisingNotes.map(n => ({
+        advisor: n.profiles?.full_name,
+        meeting_date: n.meeting_date,
+        notes: n.notes,
+      })),
+    }
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `advisepro-my-data-${new Date().toISOString().split('T')[0]}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   useEffect(() => {
     if (!myProfileId || !advisorProfile) return
     const channel = supabase
@@ -612,10 +641,16 @@ function StudentDashboardContent() {
           { label: 'Messages',   href: '/dashboard/student', tab: 'messages',   badge: unreadMessages },
         ]}
       >
-        <button onClick={() => router.push('/dashboard/student/edit')}
-          className="text-sm text-stone-500 hover:text-stone-900 border border-stone-200 px-3 py-1.5 rounded-xl transition-colors">
-          Edit Profile
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExport}
+            className="text-sm text-stone-400 hover:text-stone-700 border border-stone-200 px-3 py-1.5 rounded-xl transition-colors">
+            Export My Data
+          </button>
+          <button onClick={() => router.push('/dashboard/student/edit')}
+            className="text-sm text-stone-500 hover:text-stone-900 border border-stone-200 px-3 py-1.5 rounded-xl transition-colors">
+            Edit Profile
+          </button>
+        </div>
       </DashboardNav>
 
       <div className="max-w-5xl mx-auto px-8 py-8">

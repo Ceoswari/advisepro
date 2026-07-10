@@ -777,6 +777,14 @@ export default function MatchRiskPage() {
     } else {
       setSelectedId(studentId)
       setSelectedCol(col)
+      // FERPA §99.32: log when admin accesses a student's match record
+      if (adminId) {
+        supabase.from('audit_logs').insert({
+          action: 'view_student_record',
+          performed_by: adminId,
+          student_id: studentId,
+        })
+      }
     }
   }
 

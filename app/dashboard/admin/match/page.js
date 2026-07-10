@@ -541,16 +541,28 @@ function Drawer({ student, assessment, history, mode, onClose, onRiskChange, onS
           placeholder={"#1 Johns Hopkins\n#2 Penn Medicine\n#3 Cooper\n..."} />
         {rolLines.length > 0 && (
           <div className="bg-stone-50 rounded-xl overflow-hidden">
+            <p className="text-xs text-stone-400 px-3 pt-2 pb-1">Click a row to record match outcome</p>
             {rolLines.map((prog, i) => {
               const rank    = i + 1
-              const isMatch = matchRank === rank
+              const isMatch = matchRank === rank && aForm.matched_program === prog
               return (
                 <div key={i}
-                  className={`flex items-center gap-3 px-3 py-2 text-xs border-b border-stone-100 last:border-0 ${isMatch ? 'bg-emerald-50' : ''}`}>
+                  onClick={() => {
+                    if (isMatch) {
+                      setAForm(f => ({ ...f, matched_program: '', rank_of_match: '' }))
+                    } else {
+                      setAForm(f => ({ ...f, matched_program: prog, rank_of_match: String(rank) }))
+                    }
+                  }}
+                  className={`flex items-center gap-3 px-3 py-2 text-xs border-b border-stone-100 last:border-0 cursor-pointer transition-colors
+                    ${isMatch ? 'bg-emerald-50 hover:bg-emerald-100' : 'hover:bg-stone-100'}`}>
                   <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold flex-shrink-0 text-xs
                     ${isMatch ? 'bg-emerald-500 text-white' : 'bg-stone-200 text-stone-500'}`}>{rank}</span>
                   <span className={`flex-1 truncate ${isMatch ? 'text-emerald-700 font-semibold' : 'text-stone-600'}`}>{prog}</span>
-                  {isMatch && <span className="text-emerald-500 font-semibold text-xs">MATCHED</span>}
+                  {isMatch
+                    ? <span className="text-emerald-500 font-semibold text-xs">MATCHED</span>
+                    : <span className="text-stone-300 text-xs opacity-0 group-hover:opacity-100">Select</span>
+                  }
                 </div>
               )
             })}
